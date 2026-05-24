@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KnowLeaf 知叶</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 3C16 3 5 9 5 19C5 25 9 29 13 29C15 29 17 27 17 27C17 27 19 29 21 29C25 29 29 25 29 19C29 9 18 3 16 3Z' fill='%2322c55e'/><line x1='16' y1='17' x2='16' y2='29' stroke='%23166534' stroke-width='1.5'/><path d='M16 17L16 9' stroke='%23166534' stroke-width='1' opacity='0.6'/></svg>">
+<style>
+  :root {
+    --green-50:  #f0fdf4;
+    --green-100: #dcfce7;
+    --green-200: #bbf7d0;
+    --green-300: #86efac;
+    --green-400: #4ade80;
+    --green-500: #22c55e;
+    --green-600: #16a34a;
+    --green-700: #15803d;
+    --green-800: #166534;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 40%, #f8fafc 100%);
+    min-height: 100vh;
+    color: #1e293b;
+    padding-bottom: 24px;
+  }
+
+  /* ===== 顶部标题栏 ===== */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--green-200);
+  }
+  .header .logo {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 18px; font-weight: 700;
+    color: var(--green-800);
+  }
+  .header .logo span { font-size: 22px; }
+  .header .btn-settings {
+    background: none;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: var(--green-700);
+    cursor: pointer;
+    min-height: 44px;
+    display: flex; align-items: center;
+  }
+  .header .btn-settings:active { background: var(--green-100); }
+
+  /* ===== 区域1：输入区 ===== */
+  .input-section {
+    padding: 12px 12px 8px;
+  }
+  .input-card {
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .input-card label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--green-800);
+    margin-bottom: 8px;
+  }
+  .input-card textarea {
+    width: 100%;
+    height: 120px;
+    resize: vertical;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 15px;
+    line-height: 1.6;
+    font-family: inherit;
+    background: rgba(255,255,255,.7);
+    color: #334155;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .input-card textarea:focus {
+    border-color: var(--green-500);
+    box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+  }
+  .input-card textarea::placeholder { color: #a8cfb0; }
+  .btn-analyze {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, var(--green-500), var(--green-600));
+    box-shadow: 0 2px 12px rgba(34,197,94,.3);
+    min-height: 48px;
+    -webkit-appearance: none;
+    transition: opacity .15s;
+  }
+  .btn-analyze:active { opacity: .85; }
+  .btn-analyze.loading {
+    background: #a8cfb0;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  /* ===== 区域2：思维导图（可折叠） ===== */
+  .mindmap-section {
+    margin: 0 12px 8px;
+  }
+  .section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--green-700);
+    cursor: pointer;
+    min-height: 48px;
+    -webkit-appearance: none;
+  }
+  .section-toggle .arrow {
+    font-size: 12px;
+    transition: transform .25s;
+  }
+  .section-toggle.collapsed .arrow { transform: rotate(-90deg); }
+  .mindmap-body {
+    overflow: hidden;
+    transition: max-height .3s ease;
+    margin-top: 8px;
+    background: rgba(255,255,255,.45);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius);
+    height: 350px;
+  }
+  .mindmap-body.collapsed { max-height: 0 !important; height: 0; border: none; margin-top: 0; }
+  .mindmap-body .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #a8cfb0;
+    font-size: 14px;
+    text-align: center;
+  }
+  .mindmap-body .placeholder .icon { font-size: 40px; margin-bottom: 8px; }
+  .mindmap-body svg {
+    width: 100%;
+    height: 100%;
+    display: none;
+  }
+  .mindmap-body.has-data .placeholder { display: none; }
+  .mindmap-body.has-data svg { display: block; }
+
+  /* ===== 区域3：知识库 ===== */
+  .knowledge-section {
+    margin: 0 12px 8px;
+  }
+  .knowledge-card {
+    background: rgba(255,255,255,.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .knowledge-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--green-100);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .knowledge-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--green-800);
+  }
+  .knowledge-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .knowledge-header .count {
+    font-size: 11px;
+    color: var(--green-500);
+    background: var(--green-100);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .btn-sm {
+    border: 1px solid var(--green-300);
+    background: rgba(255,255,255,.6);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--green-700);
+    cursor: pointer;
+    min-height: 36px;
+    -webkit-appearance: none;
+    white-space: nowrap;
+  }
+  .btn-sm:active { background: var(--green-100); }
+  .btn-sm.danger {
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+  .btn-sm.danger:active { background: #fef2f2; }
+
+  .search-bar {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--green-50);
+  }
+  .search-input {
+    width: 100%;
+    border: 1px solid var(--green-200);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: rgba(255,255,255,.5);
+    color: #334155;
+    min-height: 40px;
+    -webkit-appearance: none;
+  }
+  .search-input:focus { border-color: var(--green-400); }
+  .search-input::placeholder { color: #a8cfb0; }
+
+  .knowledge-tree {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px 14px;
+  }
+  .knowledge-tree .empty-state,
+  .knowledge-tree .no-search-result {
+    text-align: center;
+    color: #a8cfb0;
+    font-size: 13px;
+    padding: 24px 0;
+  }
+
+  /* 树形列表（移动端适配） */
+  .subject-group { margin-bottom: 4px; }
+  .subject-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--green-700);
+    cursor: pointer;
+    padding: 10px 8px;
+    border-radius: 6px;
+    user-select: none;
+    min-height: 44px;
+  }
+  .subject-toggle:active { background: var(--green-100); }
+  .subject-toggle .arrow {
+    font-size: 10px;
+    transition: transform .2s;
+    display: inline-block;
+  }
+  .subject-toggle.collapsed .arrow { transform: rotate(-90deg); }
+  .subject-toggle .badge {
+    font-size: 11px;
+    background: var(--green-100);
+    color: var(--green-600);
+    padding: 1px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  .topic-children {
+    overflow: hidden;
+    transition: max-height .25s ease;
+    padding-left: 16px;
+  }
+  .topic-children.collapsed { max-height: 0 !important; }
+  .topic-group { margin-bottom: 2px; }
+  .topic-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    padding: 8px 6px;
+    border-radius: 4px;
+    user-select: none;
+    min-height: 40px;
+  }
+  .topic-toggle:active { background: var(--green-50); }
+  .topic-toggle .arrow {
+    font-size: 9px;
+    transition: transform .2s;
+    display: inline-block;
+  }
+  .topic-toggle.collapsed .arrow { transform: rotate(-90deg); }
+  .record-list {
+    overflow: hidden;
+    transition: max-height .25s ease;
+    list-style: none;
+    padding-left: 18px;
+  }
+  .record-list.collapsed { max-height: 0 !important; }
+  .record-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: #64748b;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 2px solid var(--green-200);
+    margin-bottom: 2px;
+    min-height: 44px;
+  }
+  .record-item:active { background: var(--green-50); }
+  .record-body { flex:1; min-width:0; }
+  .record-summary {
+    color: #334155;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .record-text {
+    display: none;
+    margin-top: 4px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .record-text.show { display: block; }
+  .record-time {
+    font-size: 11px;
+    color: #c0cfc0;
+    margin-top: 2px;
+  }
+  .btn-delete {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #d4d4d4;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-appearance: none;
+  }
+  .btn-delete:active { color: #ef4444; background: #fef2f2; }
+
+  /* ===== 弹窗 ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.3);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-card {
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--green-200);
+    border-radius: 16px 16px 0 0;
+    padding: 24px 18px 32px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 32px rgba(0,0,0,.12);
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  .modal-card h3 {
+    font-size: 17px;
+    color: var(--green-800);
+    margin-bottom: 14px;
+  }
+  .modal-card .hint {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+  .modal-card .hint a { color: var(--green-600); }
+  .modal-card input[type="password"],
+  .modal-card input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    background: rgba(255,255,255,.7);
+    margin-bottom: 8px;
+    min-height: 44px;
+    -webkit-appearance: none;
+  }
+  .modal-card input:focus {
+    border-color: var(--green-500);
+    box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+  .modal-actions button {
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+    -webkit-appearance: none;
+  }
+  .btn-cancel {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+  }
+  .btn-cancel:active { background: #e2e8f0; }
+  .btn-save {
+    background: linear-gradient(135deg, var(--green-500), var(--green-600));
+    border: none;
+    color: #fff;
+  }
+
+  /* 设置面板细分 */
+  .settings-section {
+    margin-bottom: 18px;
+  }
+  .settings-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green-700);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--green-100);
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #475569;
+  }
+  .stat-row .stat-val {
+    font-weight: 600;
+    color: var(--green-700);
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn-outline {
+    padding: 9px 14px;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    font-size: 13px;
+    background: rgba(255,255,255,.5);
+    color: var(--green-700);
+    cursor: pointer;
+    min-height: 44px;
+    -webkit-appearance: none;
+  }
+  .btn-outline:active { background: var(--green-100); }
+  .btn-outline.danger {
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+  .btn-outline.danger:active { background: #fef2f2; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 2000;
+    animation: slideUp .25s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,.12);
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast.error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+  .toast.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; }
+
+  #importFileInput { display: none; }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--green-300); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<!-- 顶部标题栏 -->
+<div class="header">
+  <div class="logo"><span>🍃</span>KnowLeaf 知叶</div>
+  <button class="btn-settings" id="btnSettings">⚙ 设置</button>
+</div>
+
+<!-- 区域1：输入区 -->
+<div class="input-section">
+  <div class="input-card">
+    <label for="userInput">输入学习内容</label>
+    <textarea
+      id="userInput"
+      placeholder="粘贴或输入你想整理的知识内容...
+例如：TCP 三次握手的过程、React Hooks 原理..."
+    ></textarea>
+    <button class="btn-analyze" id="btnAnalyze">🔍 分析并生成导图</button>
+  </div>
+</div>
+
+<!-- 区域2：思维导图（可折叠，默认收起） -->
+<div class="mindmap-section">
+  <div class="section-toggle collapsed" id="mindmapToggle">
+    <span class="arrow">▼</span> 思维导图
+  </div>
+  <div class="mindmap-body collapsed" id="mindmapBody">
+    <div class="placeholder" id="mindmapPlaceholder">
+      <div class="icon">🧠</div>
+      <p>分析内容后将在这里展示思维导图</p>
+    </div>
+    <svg id="mindmapSvg"></svg>
+  </div>
+</div>
+
+<!-- 区域3：知识库 -->
+<div class="knowledge-section">
+  <div class="knowledge-card">
+    <div class="knowledge-header">
+      <h3>📚 知识库</h3>
+      <div class="header-right">
+        <span class="count" id="knowledgeCount">0 条</span>
+        <button class="btn-sm" id="btnExport">📤</button>
+        <button class="btn-sm" id="btnImport">📥</button>
+        <button class="btn-sm danger" id="btnClearAll">🗑</button>
+      </div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="searchInput" placeholder="🔍 搜索学科、知识点或内容..." autocomplete="off">
+    </div>
+    <div class="knowledge-tree" id="knowledgeTree">
+      <div class="empty-state">还没有知识条目，开始输入吧</div>
+    </div>
+  </div>
+</div>
+
+<!-- API Key 弹窗（首次使用） -->
+<div class="modal-overlay" id="modalOverlay" style="display:none;">
+  <div class="modal-card">
+    <h3>🔑 配置 API Key</h3>
+    <p class="hint">
+      请输入你的 DeepSeek API Key，可在
+      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">DeepSeek 开放平台</a> 获取。
+      Key 仅保存在你的浏览器本地。
+    </p>
+    <input type="password" id="apiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCancelKey">取消</button>
+      <button class="btn-save" id="btnSaveKey">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置面板 -->
+<div class="modal-overlay" id="settingsOverlay" style="display:none;">
+  <div class="modal-card">
+    <h3>⚙ 设置</h3>
+    <div class="settings-section">
+      <h4>🔑 API Key</h4>
+      <input type="password" id="settingsApiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
+      <button class="btn-outline" id="btnSaveSettingsKey" style="margin-top:6px;">保存 Key</button>
+    </div>
+    <div class="settings-section">
+      <h4>🤖 模型信息</h4>
+      <div class="stat-row"><span>模型</span><span class="stat-val">deepseek-chat</span></div>
+      <div class="stat-row"><span>Temperature</span><span class="stat-val">0.3</span></div>
+      <div class="stat-row"><span>API 地址</span><span class="stat-val" style="font-size:12px;">api.deepseek.com</span></div>
+    </div>
+    <div class="settings-section">
+      <h4>📊 数据统计</h4>
+      <div class="stat-row"><span>知识条目</span><span class="stat-val" id="statRecordCount">0</span></div>
+      <div class="stat-row"><span>学科数</span><span class="stat-val" id="statSubjectCount">0</span></div>
+      <div class="stat-row"><span>知识点数</span><span class="stat-val" id="statTopicCount">0</span></div>
+      <div class="stat-row"><span>估算 Token 用量</span><span class="stat-val" id="statTokens">0</span></div>
+    </div>
+    <div class="settings-section">
+      <h4>💾 数据管理</h4>
+      <div class="btn-row">
+        <button class="btn-outline" id="btnSettingsExport">📤 导出</button>
+        <button class="btn-outline" id="btnSettingsImport">📥 导入</button>
+        <button class="btn-outline danger" id="btnSettingsClearAll">🗑 清空</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCloseSettings">关闭</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="importFileInput" accept=".json">
+
+<script>
+(function () {
+  const LS_KEY  = 'knowleaf_deepseek_apikey';
+  const DATA_KEY = 'knowleaf_data';
+
+  /* DOM 引用 */
+  const btnAnalyze     = document.getElementById('btnAnalyze');
+  const userInput      = document.getElementById('userInput');
+  const modalOverlay   = document.getElementById('modalOverlay');
+  const apiKeyInput    = document.getElementById('apiKeyInput');
+  const btnSaveKey     = document.getElementById('btnSaveKey');
+  const btnCancelKey   = document.getElementById('btnCancelKey');
+  const btnSettings    = document.getElementById('btnSettings');
+  const mindmapToggle  = document.getElementById('mindmapToggle');
+  const mindmapBody    = document.getElementById('mindmapBody');
+  const mindmapPlaceholder = document.getElementById('mindmapPlaceholder');
+  const mindmapSvg     = document.getElementById('mindmapSvg');
+  const knowledgeTree  = document.getElementById('knowledgeTree');
+  const knowledgeCount = document.getElementById('knowledgeCount');
+  const searchInput    = document.getElementById('searchInput');
+  const btnExport      = document.getElementById('btnExport');
+  const btnImport      = document.getElementById('btnImport');
+  const btnClearAll    = document.getElementById('btnClearAll');
+  const importFileInput = document.getElementById('importFileInput');
+  const settingsOverlay     = document.getElementById('settingsOverlay');
+  const settingsApiKeyInput = document.getElementById('settingsApiKeyInput');
+  const btnSaveSettingsKey  = document.getElementById('btnSaveSettingsKey');
+  const btnCloseSettings    = document.getElementById('btnCloseSettings');
+  const btnSettingsExport   = document.getElementById('btnSettingsExport');
+  const btnSettingsImport   = document.getElementById('btnSettingsImport');
+  const btnSettingsClearAll = document.getElementById('btnSettingsClearAll');
+
+  /* 工具 */
+  function getApiKey() { return localStorage.getItem(LS_KEY); }
+  function saveApiKey(key) { localStorage.setItem(LS_KEY, key); }
+
+  function showToast(msg, type) {
+    var el = document.createElement('div');
+    el.className = 'toast ' + (type || 'error');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 3000);
+  }
+
+  function setLoading(loading) {
+    btnAnalyze.disabled = loading;
+    if (loading) {
+      btnAnalyze.classList.add('loading');
+      btnAnalyze.textContent = '⏳ 分析中...';
+    } else {
+      btnAnalyze.classList.remove('loading');
+      btnAnalyze.textContent = '🔍 分析并生成导图';
+    }
+  }
+
+  /* 知识库数据 */
+  function loadData() {
+    try { var raw = localStorage.getItem(DATA_KEY); return raw ? JSON.parse(raw) : {}; }
+    catch (e) { return {}; }
+  }
+  function saveData(data) { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
+
+  function addKnowledge(text, subject, topic, summary) {
+    var data = loadData();
+    if (!data[subject]) data[subject] = {};
+    if (!data[subject][topic]) data[subject][topic] = [];
+    data[subject][topic].push({ text: text, summary: summary, time: new Date().toLocaleString('zh-CN') });
+    saveData(data);
+    renderKnowledgeTree();
+  }
+
+  function deleteRecord(subject, topic, index) {
+    var data = loadData();
+    if (!data[subject] || !data[subject][topic]) return;
+    data[subject][topic].splice(index, 1);
+    if (data[subject][topic].length === 0) delete data[subject][topic];
+    if (Object.keys(data[subject]).length === 0) delete data[subject];
+    saveData(data);
+    renderKnowledgeTree();
+    refreshMindmap();
+  }
+
+  function countRecords(data) {
+    var c = 0;
+    Object.keys(data).forEach(function (s) { Object.keys(data[s]).forEach(function (t) { c += data[s][t].length; }); });
+    return c;
+  }
+  function countSubjects(data) { return Object.keys(data).length; }
+  function countTopics(data) {
+    var c = 0;
+    Object.keys(data).forEach(function (s) { c += Object.keys(data[s]).length; });
+    return c;
+  }
+
+  function clearAllData() {
+    if (!confirm('确定要清空全部知识数据吗？')) return;
+    if (!confirm('此操作不可恢复！再次确认清空？')) return;
+    localStorage.removeItem(DATA_KEY);
+    renderKnowledgeTree();
+    refreshMindmap();
+    showToast('已清空全部数据', 'success');
+  }
+
+  function exportData() {
+    var json = JSON.stringify(loadData(), null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'knowleaf_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('已导出', 'success');
+  }
+
+  function importData(file) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var imported = JSON.parse(e.target.result);
+        if (typeof imported !== 'object' || Array.isArray(imported)) throw new Error('格式错误');
+        if (!confirm('即将导入 ' + countRecords(imported) + ' 条记录，与现有数据合并。确定？')) return;
+        var existing = loadData();
+        Object.keys(imported).forEach(function (s) {
+          if (!existing[s]) existing[s] = {};
+          Object.keys(imported[s]).forEach(function (t) {
+            if (!existing[s][t]) existing[s][t] = [];
+            existing[s][t] = existing[s][t].concat(imported[s][t]);
+          });
+        });
+        saveData(existing);
+        renderKnowledgeTree();
+        refreshMindmap();
+        showToast('导入成功', 'success');
+      } catch (err) { showToast('导入失败：格式不正确', 'error'); }
+    };
+    reader.readAsText(file);
+    importFileInput.value = '';
+  }
+
+  /* 搜索 */
+  var currentFilter = '';
+  function matchesFilter(subj, topic, rec) {
+    if (!currentFilter) return true;
+    var q = currentFilter.toLowerCase();
+    return subj.toLowerCase().indexOf(q) !== -1
+      || topic.toLowerCase().indexOf(q) !== -1
+      || rec.summary.toLowerCase().indexOf(q) !== -1
+      || rec.text.toLowerCase().indexOf(q) !== -1;
+  }
+
+  /* 渲染知识库 */
+  function renderKnowledgeTree() {
+    var data = loadData();
+    var subjects = Object.keys(data);
+    var totalCount = 0, anyVisible = false;
+    subjects.forEach(function (s) {
+      Object.keys(data[s]).forEach(function (t) {
+        data[s][t].forEach(function (r) {
+          if (matchesFilter(s, t, r)) { totalCount++; anyVisible = true; }
+        });
+      });
+    });
+    knowledgeCount.textContent = totalCount + ' 条';
+
+    if (subjects.length === 0) {
+      knowledgeTree.innerHTML = '<div class="empty-state">还没有知识条目，开始输入吧</div>';
+      return;
+    }
+    if (!anyVisible && currentFilter) {
+      knowledgeTree.innerHTML = '<div class="no-search-result">没有匹配 "' + escHtml(currentFilter) + '" 的知识</div>';
+      return;
+    }
+
+    var html = '';
+    subjects.forEach(function (subj) {
+      var topics = data[subj];
+      var topicKeys = Object.keys(topics);
+      var visibleTopics = [];
+      topicKeys.forEach(function (top) {
+        var visibleRecords = [];
+        data[subj][top].forEach(function (rec, idx) {
+          if (matchesFilter(subj, top, rec)) visibleRecords.push({ rec: rec, idx: idx });
+        });
+        if (visibleRecords.length > 0 || !currentFilter) {
+          var recordsToShow = currentFilter ? visibleRecords
+            : data[subj][top].map(function (r, i) { return { rec: r, idx: i }; });
+          visibleTopics.push({ name: top, records: recordsToShow, totalCount: data[subj][top].length });
+        }
+      });
+      if (visibleTopics.length === 0 && currentFilter) return;
+
+      var subjTotal = 0;
+      visibleTopics.forEach(function (vt) { subjTotal += vt.totalCount; });
+
+      html += '<div class="subject-group">';
+      html += '<div class="subject-toggle" data-subject="' + escHtml(subj) + '">';
+      html += '<span class="arrow">▼</span>' + escHtml(subj);
+      html += '<span class="badge">' + subjTotal + '</span></div>';
+      html += '<div class="topic-children" data-subject-children="' + escHtml(subj) + '">';
+      visibleTopics.forEach(function (vt) {
+        html += '<div class="topic-group">';
+        html += '<div class="topic-toggle" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '">';
+        html += '<span class="arrow">▼</span>' + escHtml(vt.name) + ' (' + vt.totalCount + ')</div>';
+        html += '<div class="record-list" data-topic-children="' + escHtml(subj) + '|' + escHtml(vt.name) + '">';
+        vt.records.forEach(function (item) {
+          var rec = item.rec, idx = item.idx;
+          html += '<li class="record-item"><div class="record-body">';
+          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
+          html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
+          html += '<div class="record-time">' + escHtml(rec.time) + '</div></div>';
+          html += '<button class="btn-delete" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✕</button>';
+          html += '</li>';
+        });
+        html += '</div></div>';
+      });
+      html += '</div></div>';
+    });
+    knowledgeTree.innerHTML = html;
+    bindTreeEvents();
+  }
+
+  function escHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function bindTreeEvents() {
+    knowledgeTree.querySelectorAll('.subject-toggle').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var subj = this.getAttribute('data-subject');
+        var children = knowledgeTree.querySelector('[data-subject-children="' + escHtml(subj) + '"]');
+        if (!children) return;
+        if (children.classList.contains('collapsed')) {
+          children.classList.remove('collapsed'); children.style.maxHeight = children.scrollHeight + 'px'; this.classList.remove('collapsed');
+        } else {
+          children.style.maxHeight = children.scrollHeight + 'px';
+          requestAnimationFrame(function () { children.classList.add('collapsed'); children.style.maxHeight = '0px'; });
+          this.classList.add('collapsed');
+        }
+      });
+    });
+    knowledgeTree.querySelectorAll('.topic-toggle').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic');
+        var children = knowledgeTree.querySelector('[data-topic-children="' + escHtml(subj) + '|' + escHtml(top) + '"]');
+        if (!children) return;
+        if (children.classList.contains('collapsed')) {
+          children.classList.remove('collapsed'); children.style.maxHeight = children.scrollHeight + 'px'; this.classList.remove('collapsed');
+        } else {
+          children.style.maxHeight = children.scrollHeight + 'px';
+          requestAnimationFrame(function () { children.classList.add('collapsed'); children.style.maxHeight = '0px'; });
+          this.classList.add('collapsed');
+        }
+      });
+    });
+    knowledgeTree.querySelectorAll('.record-summary').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic'), idx = this.getAttribute('data-idx');
+        var textEl = document.getElementById('recText-' + escHtml(subj) + '-' + escHtml(top) + '-' + idx);
+        if (textEl) textEl.classList.toggle('show');
+      });
+    });
+    knowledgeTree.querySelectorAll('.btn-delete').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic'), idx = parseInt(this.getAttribute('data-idx'), 10);
+        if (confirm('确定删除 "' + top + '" 下的这条记录吗？')) deleteRecord(subj, top, idx);
+      });
+    });
+  }
+
+  /* Markmap */
+  function buildMarkdown(data) {
+    var lines = ['# 我的知识树'];
+    var subjects = Object.keys(data);
+    if (subjects.length === 0) return '';
+    subjects.forEach(function (s) {
+      lines.push('## ' + s);
+      Object.keys(data[s]).forEach(function (t) {
+        lines.push('### ' + t);
+        data[s][t].forEach(function (r) { lines.push('- ' + r.summary); });
+      });
+    });
+    return lines.join('\n');
+  }
+
+  var mmInstance = null;
+
+  async function refreshMindmap() {
+    var data = loadData();
+    var hasData = Object.keys(data).length > 0;
+    if (!hasData) {
+      mindmapBody.classList.remove('has-data');
+      if (mmInstance) { mmInstance.destroy(); mmInstance = null; }
+      return;
+    }
+    mindmapBody.classList.add('has-data');
+    var md = buildMarkdown(data);
+    if (!window.markmap) { setTimeout(refreshMindmap, 200); return; }
+    var { Markmap, Transformer } = window.markmap;
+    var transformer = new Transformer();
+    var { root } = transformer.transform(md);
+    if (mmInstance) {
+      mmInstance.setData(root);
+      await mmInstance.fit();
+    } else {
+      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 2, duration: 300 }, root);
+    }
+  }
+
+  /* 思维导图折叠 */
+  mindmapToggle.addEventListener('click', function () {
+    var collapsed = mindmapBody.classList.contains('collapsed');
+    if (collapsed) {
+      mindmapBody.classList.remove('collapsed');
+      mindmapToggle.classList.remove('collapsed');
+      if (Object.keys(loadData()).length > 0) refreshMindmap();
+    } else {
+      mindmapBody.classList.add('collapsed');
+      mindmapToggle.classList.add('collapsed');
+    }
+  });
+
+  /* API Key 弹窗（首次使用） */
+  var modalResolve = null;
+  function showApiKeyModal() {
+    return new Promise(function (resolve) {
+      modalResolve = resolve;
+      apiKeyInput.value = getApiKey() || '';
+      modalOverlay.style.display = 'flex';
+      apiKeyInput.focus();
+    });
+  }
+  function hideApiKeyModal() {
+    modalOverlay.style.display = 'none';
+    if (modalResolve) { modalResolve(null); modalResolve = null; }
+  }
+  btnSaveKey.addEventListener('click', function () {
+    var key = apiKeyInput.value.trim();
+    if (!key) { showToast('请输入 API Key', 'error'); return; }
+    saveApiKey(key);
+    modalOverlay.style.display = 'none';
+    if (modalResolve) { modalResolve(key); modalResolve = null; }
+    showToast('API Key 已保存', 'success');
+  });
+  btnCancelKey.addEventListener('click', hideApiKeyModal);
+  modalOverlay.addEventListener('click', function (e) { if (e.target === modalOverlay) hideApiKeyModal(); });
+
+  /* 设置面板 */
+  btnSettings.addEventListener('click', openSettingsPanel);
+  function openSettingsPanel() {
+    settingsApiKeyInput.value = getApiKey() || '';
+    updateSettingsStats();
+    settingsOverlay.style.display = 'flex';
+  }
+  function closeSettingsPanel() { settingsOverlay.style.display = 'none'; }
+  function updateSettingsStats() {
+    var data = loadData();
+    document.getElementById('statRecordCount').textContent = countRecords(data) + ' 条';
+    document.getElementById('statSubjectCount').textContent = countSubjects(data) + ' 个';
+    document.getElementById('statTopicCount').textContent = countTopics(data) + ' 个';
+    document.getElementById('statTokens').textContent = '~' + Math.round(JSON.stringify(data).length / 2) + ' tokens';
+  }
+  btnSaveSettingsKey.addEventListener('click', function () {
+    var key = settingsApiKeyInput.value.trim();
+    if (!key) { showToast('请输入 API Key', 'error'); return; }
+    saveApiKey(key);
+    showToast('API Key 已保存', 'success');
+  });
+  btnCloseSettings.addEventListener('click', closeSettingsPanel);
+  settingsOverlay.addEventListener('click', function (e) { if (e.target === settingsOverlay) closeSettingsPanel(); });
+  btnSettingsExport.addEventListener('click', function () { exportData(); closeSettingsPanel(); });
+  btnSettingsImport.addEventListener('click', function () { importFileInput.click(); closeSettingsPanel(); });
+  btnSettingsClearAll.addEventListener('click', function () { clearAllData(); closeSettingsPanel(); });
+
+  /* 知识库按钮 */
+  btnExport.addEventListener('click', exportData);
+  btnImport.addEventListener('click', function () { importFileInput.click(); });
+  btnClearAll.addEventListener('click', clearAllData);
+  importFileInput.addEventListener('change', function () { if (this.files && this.files[0]) importData(this.files[0]); });
+
+  /* 搜索 */
+  searchInput.addEventListener('input', function () { currentFilter = this.value.trim(); renderKnowledgeTree(); });
+
+  /* DeepSeek API */
+  async function callDeepSeek(text) {
+    var apiKey = getApiKey();
+    if (!apiKey) { apiKey = await showApiKeyModal(); if (!apiKey) return null; }
+    var resp = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'deepseek-chat', temperature: 0.3,
+        messages: [
+          { role: 'system', content: '你是一个知识提取器。用户输入一段学习笔记，输出纯JSON格式{subject,topic,summary}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。' },
+          { role: 'user', content: text }
+        ]
+      })
+    });
+    if (!resp.ok) {
+      var errText = '';
+      try { var errJson = JSON.parse(await resp.text()); errText = errJson.error && errJson.error.message ? errJson.error.message : ''; } catch (e) {}
+      throw new Error('API 请求失败 (' + resp.status + ')' + (errText ? ': ' + errText : ''));
+    }
+    var data = await resp.json();
+    return data.choices[0].message.content;
+  }
+
+  /* 分析按钮 */
+  btnAnalyze.addEventListener('click', async function () {
+    var text = userInput.value.trim();
+    if (!text) { showToast('请先输入学习内容', 'error'); return; }
+    setLoading(true);
+    try {
+      var result = await callDeepSeek(text);
+      try {
+        var parsed = JSON.parse(result);
+        addKnowledge(text, parsed.subject, parsed.topic, parsed.summary);
+        userInput.value = '';
+        refreshMindmap();
+        // 自动展开思维导图
+        if (mindmapBody.classList.contains('collapsed')) {
+          mindmapBody.classList.remove('collapsed');
+          mindmapToggle.classList.remove('collapsed');
+        }
+        showToast('分析成功，知识库已更新！', 'success');
+      } catch (e) { showToast('API 返回格式异常，请重试', 'error'); }
+    } catch (err) { showToast(err.message, 'error'); }
+    finally { setLoading(false); }
+  });
+
+  /* 初始化 */
+  renderKnowledgeTree();
+  refreshMindmap();
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.15"></script>
+
+</body>
+</html>
