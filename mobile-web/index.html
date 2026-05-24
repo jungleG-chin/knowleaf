@@ -452,6 +452,35 @@
     border-color: var(--green-500);
     box-shadow: 0 0 0 3px rgba(34,197,94,.12);
   }
+  .modal-card select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    background: rgba(255,255,255,.7);
+    color: #334155;
+    min-height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    margin-bottom: 8px;
+  }
+  .modal-card select:focus {
+    border-color: var(--green-500);
+    box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+  }
+  .modal-card .field-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    margin-top: -4px;
+  }
   .modal-actions {
     display: flex;
     gap: 10px;
@@ -634,10 +663,18 @@
       <button class="btn-outline" id="btnSaveSettingsKey" style="margin-top:6px;">保存 Key</button>
     </div>
     <div class="settings-section">
-      <h4>🤖 模型信息</h4>
-      <div class="stat-row"><span>模型</span><span class="stat-val">deepseek-chat</span></div>
-      <div class="stat-row"><span>Temperature</span><span class="stat-val">0.3</span></div>
-      <div class="stat-row"><span>API 地址</span><span class="stat-val" style="font-size:12px;">api.deepseek.com</span></div>
+      <h4>🤖 模型配置</h4>
+      <select id="settingsPlatform">
+        <option value="deepseek">DeepSeek（默认）</option>
+        <option value="siliconflow">硅基流动（SiliconFlow）</option>
+        <option value="aliyun">阿里百炼（通义千问）</option>
+        <option value="groq">Groq</option>
+        <option value="custom">自定义</option>
+      </select>
+      <input type="text" id="settingsApiUrl" placeholder="API 地址" autocomplete="off">
+      <div class="field-hint">API 端点地址，选择平台自动填充</div>
+      <input type="text" id="settingsModel" placeholder="模型名称" autocomplete="off">
+      <div class="field-hint">模型标识符，选择平台自动填充</div>
     </div>
     <div class="settings-section">
       <h4>📊 数据统计</h4>
@@ -664,8 +701,26 @@
 
 <script>
 (function () {
-  const LS_KEY  = 'knowleaf_deepseek_apikey';
+  const LS_KEY   = 'knowleaf_deepseek_apikey';
+  const URL_KEY  = 'knowleaf_api_url';
+  const MODEL_KEY = 'knowleaf_model';
   const DATA_KEY = 'knowleaf_data';
+
+  /* 平台预设 */
+  var PLATFORM_PRESETS = {
+    deepseek:    { url: 'https://api.deepseek.com/chat/completions',          model: 'deepseek-chat' },
+    siliconflow: { url: 'https://api.siliconflow.cn/v1/chat/completions',    model: 'Qwen/Qwen2.5-72B-Instruct' },
+    aliyun:      { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-max' },
+    groq:        { url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile' }
+  };
+
+  function getPlatformByUrl(url) {
+    var keys = Object.keys(PLATFORM_PRESETS);
+    for (var i = 0; i < keys.length; i++) {
+      if (PLATFORM_PRESETS[keys[i]].url === url) return keys[i];
+    }
+    return 'custom';
+  }
 
   /* DOM 引用 */
   const btnAnalyze     = document.getElementById('btnAnalyze');
@@ -693,10 +748,17 @@
   const btnSettingsExport   = document.getElementById('btnSettingsExport');
   const btnSettingsImport   = document.getElementById('btnSettingsImport');
   const btnSettingsClearAll = document.getElementById('btnSettingsClearAll');
+  const settingsPlatform    = document.getElementById('settingsPlatform');
+  const settingsApiUrl      = document.getElementById('settingsApiUrl');
+  const settingsModel       = document.getElementById('settingsModel');
 
   /* 工具 */
-  function getApiKey() { return localStorage.getItem(LS_KEY); }
+  function getApiKey()  { return localStorage.getItem(LS_KEY); }
   function saveApiKey(key) { localStorage.setItem(LS_KEY, key); }
+  function getApiUrl() { return localStorage.getItem(URL_KEY) || 'https://api.deepseek.com/chat/completions'; }
+  function saveApiUrl(url) { localStorage.setItem(URL_KEY, url); }
+  function getModel()  { return localStorage.getItem(MODEL_KEY) || 'deepseek-chat'; }
+  function saveModel(model) { localStorage.setItem(MODEL_KEY, model); }
 
   function showToast(msg, type) {
     var el = document.createElement('div');
@@ -1012,10 +1074,19 @@
   btnSettings.addEventListener('click', openSettingsPanel);
   function openSettingsPanel() {
     settingsApiKeyInput.value = getApiKey() || '';
+    // 模型配置
+    var currentUrl = getApiUrl();
+    settingsApiUrl.value = currentUrl;
+    settingsModel.value = getModel();
+    settingsPlatform.value = getPlatformByUrl(currentUrl);
+    toggleCustomFields();
     updateSettingsStats();
     settingsOverlay.style.display = 'flex';
   }
-  function closeSettingsPanel() { settingsOverlay.style.display = 'none'; }
+  function closeSettingsPanel() {
+    saveModelConfig();
+    settingsOverlay.style.display = 'none';
+  }
   function updateSettingsStats() {
     var data = loadData();
     document.getElementById('statRecordCount').textContent = countRecords(data) + ' 条';
@@ -1023,10 +1094,33 @@
     document.getElementById('statTopicCount').textContent = countTopics(data) + ' 个';
     document.getElementById('statTokens').textContent = '~' + Math.round(JSON.stringify(data).length / 2) + ' tokens';
   }
+
+  /* 平台切换：自动填充 URL 和模型 */
+  function toggleCustomFields() {
+    var isCustom = settingsPlatform.value === 'custom';
+    settingsApiUrl.readOnly = !isCustom;
+    settingsModel.readOnly = !isCustom;
+    if (!isCustom) {
+      var preset = PLATFORM_PRESETS[settingsPlatform.value];
+      if (preset) {
+        settingsApiUrl.value = preset.url;
+        settingsModel.value = preset.model;
+      }
+    }
+  }
+  settingsPlatform.addEventListener('change', toggleCustomFields);
+
+  // 保存模型配置（关闭设置面板或手动保存 Key 时一并保存）
+  function saveModelConfig() {
+    saveApiUrl(settingsApiUrl.value.trim());
+    saveModel(settingsModel.value.trim());
+  }
+
   btnSaveSettingsKey.addEventListener('click', function () {
     var key = settingsApiKeyInput.value.trim();
     if (!key) { showToast('请输入 API Key', 'error'); return; }
     saveApiKey(key);
+    saveModelConfig();
     showToast('API Key 已保存', 'success');
   });
   btnCloseSettings.addEventListener('click', closeSettingsPanel);
@@ -1044,15 +1138,17 @@
   /* 搜索 */
   searchInput.addEventListener('input', function () { currentFilter = this.value.trim(); renderKnowledgeTree(); });
 
-  /* DeepSeek API */
+  /* 调用 AI API（支持多平台） */
   async function callDeepSeek(text) {
     var apiKey = getApiKey();
     if (!apiKey) { apiKey = await showApiKeyModal(); if (!apiKey) return null; }
-    var resp = await fetch('https://api.deepseek.com/chat/completions', {
+    var apiUrl = getApiUrl();
+    var model  = getModel();
+    var resp = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({
-        model: 'deepseek-chat', temperature: 0.3,
+        model: model, temperature: 0.3,
         messages: [
           { role: 'system', content: '你是一个知识提取器。用户输入一段学习笔记，输出纯JSON格式{subject,topic,summary}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。' },
           { role: 'user', content: text }
