@@ -1382,7 +1382,7 @@
               status: rec.status || 'learning'
             };
           });
-          data[subj][topic] = { items: items };
+          data[subj][topic] = { items: items, parentTopic: null };
         }
       });
     });
@@ -1688,10 +1688,18 @@
     IMG_DB.saveDataBackup(data);
   }
 
-  async function addKnowledge(text, subject, topic, summary, imageBase64) {
+  async function addKnowledge(text, subject, topic, summary, imageBase64, parentTopic) {
     var data = loadData();
     if (!data[subject]) data[subject] = {};
-    if (!data[subject][topic]) data[subject][topic] = { items: [] };
+    if (!data[subject][topic]) {
+      data[subject][topic] = { items: [], parentTopic: parentTopic || null };
+    } else if (parentTopic && !data[subject][topic].parentTopic) {
+      data[subject][topic].parentTopic = parentTopic;
+    }
+    // 自动创建父知识点占位
+    if (parentTopic && !data[subject][parentTopic]) {
+      data[subject][parentTopic] = { items: [], parentTopic: null };
+    }
     var now = new Date();
     var imageId = null;
     if (imageBase64) {
@@ -1887,7 +1895,8 @@
       html += '<span class="badge">' + subjTotal + '</span></div>';
       html += '<div class="topic-children" data-subject-children="' + escHtml(subj) + '">';
       visibleTopics.forEach(function (vt) {
-        html += '<div class="topic-group">';
+        var isChild = !!(data[subj][vt.name] && data[subj][vt.name].parentTopic);
+        html += '<div class="topic-group' + (isChild ? ' topic-child' : '') + '" style="' + (isChild ? 'padding-left:18px;' : '') + '">';
         html += '<div class="topic-toggle" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '">';
         html += '<span class="arrow">▼</span>' + escHtml(vt.name) + ' (' + vt.totalCount + ')</div>';
         html += '<div class="record-list" data-topic-children="' + escHtml(subj) + '|' + escHtml(vt.name) + '">';
@@ -2051,12 +2060,43 @@
     if (subjects.length === 0) return '';
     subjects.forEach(function (s) {
       lines.push('## ' + s);
-      Object.keys(data[s]).forEach(function (t) {
+      var topics = Object.keys(data[s]);
+      // 分离顶层和子话题
+      var topLevel = [];
+      var children = [];
+      topics.forEach(function (t) {
+        if (data[s][t].parentTopic) {
+          children.push(t);
+        } else {
+          topLevel.push(t);
+        }
+      });
+      // 渲染顶层话题
+      topLevel.forEach(function (t) {
         lines.push('### ' + t);
         var items = data[s][t].items || [];
         items.forEach(function (r) {
           lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
         });
+        // 渲染该话题的子话题（####）
+        children.forEach(function (ct) {
+          if (data[s][ct].parentTopic === t) {
+            lines.push('#### ' + ct);
+            var citems = data[s][ct].items || [];
+            citems.forEach(function (r) {
+              lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
+            });
+          }
+        });
+      });
+      // 孤立子节点降级为顶层
+      children.forEach(function (ct) {
+        var p = data[s][ct].parentTopic;
+        if (!data[s][p]) {
+          lines.push('### ' + ct);
+          var items = data[s][ct].items || [];
+          items.forEach(function (r) { lines.push('- ' + r.summary); });
+        }
       });
     });
     return lines.join('\n');
@@ -2278,11 +2318,11 @@
     var hasImage = !!imageBase64;
     var systemPrompt;
     if (hasImage && !text) {
-      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点，输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结"}。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。';
+      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点。输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}。如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。';
     } else if (hasImage && text) {
-      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary"}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。';
+      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary","parentTopic"}。subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（如果是子概念就填，没有就填null）。只输出JSON不要markdown标记。';
     } else {
-      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，输出纯JSON格式{subject,topic,summary}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。';
+      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。输出纯JSON数组格式：[{subject,topic,summary,parentTopic}]。每个对象: subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（子概念才填，没有就填null）。只输出JSON不要markdown标记。';
     }
 
     var userContent = buildContent(text, imageBase64);
@@ -2315,12 +2355,12 @@
   }
 
   var mergeResolve = null;
-  function showMergeDialog(subject, topic, summary, text, imageBase64) {
+  function showMergeDialog(subject, topic, summary, text, imageBase64, parentTopic) {
     return new Promise(function (resolve) {
       mergeResolve = resolve;
       mergeTopicName.textContent = topic + '（' + subject + '）';
       mergeModalOverlay.style.display = 'flex';
-      mergeModalOverlay._pending = { subject: subject, topic: topic, summary: summary, text: text, image: imageBase64 || null };
+      mergeModalOverlay._pending = { subject: subject, topic: topic, summary: summary, text: text, image: imageBase64 || null, parentTopic: parentTopic || null };
     });
   }
   function hideMergeDialog() {
@@ -2332,7 +2372,14 @@
     var p = mergeModalOverlay._pending;
     if (p) {
       var data = loadData();
-      if (!data[p.subject][p.topic]) data[p.subject][p.topic] = { items: [] };
+      if (!data[p.subject][p.topic]) {
+        data[p.subject][p.topic] = { items: [], parentTopic: p.parentTopic || null };
+      } else if (p.parentTopic && !data[p.subject][p.topic].parentTopic) {
+        data[p.subject][p.topic].parentTopic = p.parentTopic;
+      }
+      if (p.parentTopic && !data[p.subject][p.parentTopic]) {
+        data[p.subject][p.parentTopic] = { items: [], parentTopic: null };
+      }
       var now = new Date();
       var imageId = null;
       if (p.image) {
@@ -2359,7 +2406,7 @@
     var p = mergeModalOverlay._pending;
     if (p) {
       var newTopic = p.topic + ' (分支)';
-      await addKnowledge(p.text, p.subject, newTopic, p.summary, p.image || undefined);
+      await addKnowledge(p.text, p.subject, newTopic, p.summary, p.image || undefined, p.parentTopic || null);
       refreshMindmap();
       showToast('已创建新分支', 'success');
     }
@@ -2451,10 +2498,21 @@
         var parsed = JSON.parse(result);
         if (parsed.error) { showToast(parsed.error, 'error'); setLoading(false); return; }
 
-        if (checkTopicMerge(parsed.subject, parsed.topic)) {
-          await showMergeDialog(parsed.subject, parsed.topic, parsed.summary, text || parsed.summary, savedImage);
-        } else {
-          await addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary, savedImage || undefined);
+        // 兼容数组格式（纯文本模式）和单对象格式（图片模式）
+        var items = Array.isArray(parsed) ? parsed : [parsed];
+        var srcImage = savedImage || undefined;
+        var savedText = text || '';
+        var firstImage = srcImage; // 只有第一项带图片
+
+        for (var idx = 0; idx < items.length; idx++) {
+          var item = items[idx];
+          if (item.error) continue;
+          var itemImage = (idx === 0) ? firstImage : undefined;
+          if (checkTopicMerge(item.subject, item.topic)) {
+            await showMergeDialog(item.subject, item.topic, item.summary, savedText, itemImage, item.parentTopic || null);
+          } else {
+            await addKnowledge(savedText || item.summary, item.subject, item.topic, item.summary, itemImage, item.parentTopic || null);
+          }
         }
 
         userInput.value = '';
@@ -2781,6 +2839,33 @@
     loadMyPanel();
   });
 
+  /* 存量数据自动检测层级（只执行一次） */
+  function autoDetectHierarchy(data) {
+    if (localStorage.getItem('knowleaf_hierarchy_migrated')) return false;
+    var changed = false;
+    for (var s in data) {
+      var topics = Object.keys(data[s]);
+      // 按名称长度升序排列
+      topics.sort(function (a, b) { return a.length - b.length; });
+      for (var i = 0; i < topics.length; i++) {
+        if (data[s][topics[i]].parentTopic) continue; // 已有父节点，跳过
+        for (var j = 0; j < i; j++) {
+          var shorter = topics[j];
+          var longer = topics[i];
+          // 长话题包含短话题名称，且剩余字符 ≥2
+          if (longer.indexOf(shorter) !== -1 && longer.length - shorter.length >= 2) {
+            data[s][longer].parentTopic = shorter;
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    localStorage.setItem('knowleaf_hierarchy_migrated', '1');
+    if (changed) saveData(data);
+    return changed;
+  }
+
   /* 初始化 */
   (async function initApp() {
     if (!window.indexedDB) {
@@ -2796,6 +2881,7 @@
       }
     }
     await migrateLegacyImages(data);
+    autoDetectHierarchy(data);
     renderKnowledgeTree();
     refreshMindmap();
   })();
