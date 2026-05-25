@@ -1873,31 +1873,130 @@
     showToast('已清空全部数据', 'success');
   }
 
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function svgToCanvas(svgString, w, h) {
+    return new Promise(function (resolve, reject) {
+      var scale = Math.min(2, Math.floor(4000 / Math.max(w, h, 1)));
+      var canvas = document.createElement('canvas');
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      var img = new Image();
+      var url;
+      img.onload = function () { URL.revokeObjectURL(url); ctx.drawImage(img, 0, 0, w, h); resolve(canvas); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('渲染失败')); };
+      url = URL.createObjectURL(new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' }));
+      img.src = url;
+    });
+  }
+
+  async function generateMindmapPDF(data) {
+    var md = buildMarkdown(data);
+    if (!md || md.trim().length <= '# 我的知识树'.length + 5) return null;
+    if (!window.markmap || !window.markmap.Markmap) return null;
+    var Markmap = window.markmap.Markmap;
+    var Transformer = window.markmap.Transformer;
+    if (!Transformer) return null;
+    var transformer = new Transformer();
+    var rootData;
+    try { var r = transformer.transform(md); rootData = r.root; } catch (e) { return null; }
+    if (!rootData) return null;
+
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:1600px;height:1200px;z-index:-1;';
+    document.body.appendChild(wrapper);
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.width = '100%'; svg.style.height = '100%';
+    wrapper.appendChild(svg);
+
+    var pdfBlob = null, mm = null;
+    try {
+      mm = Markmap.create(svg, {
+        autoFit: true, colorFreezeLevel: 1, duration: 0,
+        paddingX: 24, spacingHorizontal: 80, spacingVertical: 12,
+        fitRatio: 0.9, initialExpandLevel: -1
+      }, rootData);
+      for (var i = 0; i < 15; i++) {
+        await new Promise(function (r) { setTimeout(r, 200); });
+        var b = svg.getBoundingClientRect();
+        if (b.width > 100 && b.height > 100) break;
+      }
+      await new Promise(function (r) { setTimeout(r, 400); });
+      try { if (mm.fit) await mm.fit(); } catch (e) {}
+      var rect = svg.getBoundingClientRect();
+      var w = Math.max(Math.ceil(rect.width), 400);
+      var h = Math.max(Math.ceil(rect.height), 300);
+      var clone = svg.cloneNode(true);
+      clone.setAttribute('width', String(w));
+      clone.setAttribute('height', String(h));
+      if (!clone.getAttribute('viewBox') || clone.getAttribute('viewBox') === '0 0 0 0') {
+        clone.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      }
+      var svgStr = new XMLSerializer().serializeToString(clone);
+      var canvas = await svgToCanvas(svgStr, w, h);
+      var jsPDF = window.jspdf ? window.jspdf.jsPDF : (typeof jspdf !== 'undefined' ? jspdf.jsPDF : null);
+      if (!jsPDF) throw new Error('jsPDF未加载');
+      var orient = w >= h ? 'landscape' : 'portrait';
+      var pdf = new jsPDF({ orientation: orient, unit: 'px', format: [w, h] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
+      pdfBlob = pdf.output('blob');
+    } catch (e) {
+      console.warn('PDF生成失败', e);
+    } finally {
+      try { if (mm && mm.destroy) mm.destroy(); } catch (e) {}
+      if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+    }
+    return pdfBlob;
+  }
+
   async function exportData() {
-    var data = loadData();
-    // 从 IndexedDB 取回图片嵌入 JSON
+    showToast('正在生成导出文件...', 'success');
+    // 深克隆数据（不污染原数据！）
+    var raw = loadData();
+    var data = JSON.parse(JSON.stringify(raw));
+    var date = new Date().toISOString().slice(0, 10);
+
+    // 只在克隆数据里嵌入图片，原数据不动
     for (var s in data) {
       for (var t in data[s]) {
         var items = data[s][t].items;
         if (!items) continue;
         for (var i = 0; i < items.length; i++) {
           if (items[i].imageId) {
-            try { var base64 = await IMG_DB.get(items[i].imageId); items[i].image = base64 || null; } catch (e) { items[i].image = null; }
+            try { items[i].image = await IMG_DB.get(items[i].imageId) || null; } catch (e) { items[i].image = null; }
             delete items[i].imageId;
           }
         }
       }
     }
+
     var json = JSON.stringify(data, null, 2);
-    var blob = new Blob([json], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'knowleaf_backup_' + new Date().toISOString().slice(0,10) + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    // 重新加载以恢复 imageId
-    location.reload();
+    var zip = new JSZip();
+    zip.file('knowleaf_backup_' + date + '.json', json);
+
+    var hasPdf = false;
+    try {
+      var pdfBlob = await generateMindmapPDF(raw);
+      if (pdfBlob) { zip.file('knowleaf_mindmap_' + date + '.pdf', pdfBlob); hasPdf = true; }
+    } catch (e) { console.warn('PDF生成失败', e); }
+
+    var zipBlob = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(zipBlob, 'knowleaf_export_' + date + '.zip');
+    localStorage.setItem('knowleaf_last_backup', new Date().toISOString());
+    showToast(hasPdf ? '导出完成（JSON + PDF）' : '导出完成（仅JSON）', 'success');
   }
 
   async function importData(file) {
@@ -2342,17 +2441,29 @@
   /* 调用 AI API（支持多平台） */
 
   /* ===== 图片压缩（Canvas，纯 JS） ===== */
-  function compressImage(base64, maxSizeMB, callback) {
+  function compressImage(base64, maxSizeKB, callback) {
     var img = new Image();
     img.onload = function () {
       var canvas = document.createElement('canvas');
-      var targetBytes = maxSizeMB * 1024 * 1024;
-      var scale = Math.min(1, Math.sqrt(targetBytes / base64.length));
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+      var targetBytes = maxSizeKB * 1024;
+      var MAX_DIM = 1920;
+      var w = img.width, h = img.height;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        var ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      canvas.width = w;
+      canvas.height = h;
       var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.7));
+      ctx.drawImage(img, 0, 0, w, h);
+      var quality = 0.6;
+      var result = canvas.toDataURL('image/jpeg', quality);
+      while (result.length > targetBytes && quality > 0.2) {
+        quality -= 0.1;
+        result = canvas.toDataURL('image/jpeg', quality);
+      }
+      callback(result);
     };
     img.src = base64;
   }
@@ -2386,9 +2497,9 @@
       var reader = new FileReader();
       reader.onload = function (e) {
         var base64 = e.target.result;
-        // 超过 2MB 则压缩
-        if (base64.length > 2 * 1024 * 1024) {
-          compressImage(base64, 2, function (compressed) {
+        // 超过 512KB 则压缩
+        if (base64.length > 512 * 1024) {
+          compressImage(base64, 512, function (compressed) {
             currentImageBase64 = compressed;
             showPreview(compressed);
             showToast('图片已压缩并就绪', 'success');
@@ -2432,7 +2543,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
         body: JSON.stringify({
-          model: model, temperature: 0.7,
+          model: model, temperature: 0.7, max_tokens: 4096,
           messages: [
             { role: 'system', content: analyzePrompt },
             { role: 'user', content: text }
@@ -2465,7 +2576,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({
-        model: model, temperature: 0.3,
+        model: model, temperature: 0.3, max_tokens: 4096,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent }
@@ -2478,7 +2589,26 @@
       throw new Error('API 请求失败 (' + resp.status + ')' + (errText ? ': ' + errText : ''));
     }
     var data = await resp.json();
-    return data.choices[0].message.content;
+    var raw = data.choices[0].message.content;
+
+    // 容错：尝试解析，失败则拆分多个 JSON 对象拼成数组
+    try {
+      JSON.parse(raw);
+      return raw;
+    } catch (e1) {
+      try {
+        var objects = [];
+        var re = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+        var match;
+        while ((match = re.exec(raw)) !== null) {
+          try { objects.push(JSON.parse(match[0])); } catch (e2) {}
+        }
+        if (objects.length > 0) {
+          return JSON.stringify(objects);
+        }
+      } catch (e3) {}
+      return raw;
+    }
   }
 
   /* 知识点合并检查 */
@@ -2655,7 +2785,11 @@
           mindmapToggle.classList.remove('collapsed');
         }
         showToast('分析成功，知识库已更新！', 'success');
-      } catch (e) { showToast('API 返回格式异常，请重试', 'error'); }
+      } catch (e) {
+        console.error('API 解析失败，原始返回:', result);
+        var preview = typeof result === 'string' ? result.substring(0, 200) : String(result);
+        showToast('API 返回格式异常: ' + (e.message || 'JSON 解析失败') + '。原始内容: ' + preview, 'error');
+      }
     } catch (err) { showToast(err.message, 'error'); }
     finally { setLoading(false); }
   });
@@ -3074,6 +3208,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.15"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 </body>
 </html>
