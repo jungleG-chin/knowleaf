@@ -893,6 +893,48 @@
   }
   .btn-edit:active { color: var(--green-600); background: var(--green-50); }
 
+  /* 知识树图片缩略图 */
+  .record-image-thumb {
+    margin: 4px 0;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  /* 全屏图片查看器 */
+  .image-viewer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn .2s ease;
+  }
+  .image-viewer-overlay img {
+    max-width: 95vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+  .image-viewer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-appearance: none;
+  }
+
   /* ===== 合并弹窗 ===== */
   .merge-dialog {
     text-align: center;
@@ -1351,7 +1393,7 @@
   }
   function saveData(data) { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
 
-  function addKnowledge(text, subject, topic, summary) {
+  function addKnowledge(text, subject, topic, summary, imageBase64) {
     var data = loadData();
     if (!data[subject]) data[subject] = {};
     if (!data[subject][topic]) data[subject][topic] = { items: [] };
@@ -1362,7 +1404,8 @@
       createdAt: now.toISOString(),
       reviewCount: 0, correctCount: 0,
       lastReviewed: null, nextReview: now.toISOString(),
-      interval: 1, status: 'learning'
+      interval: 1, status: 'learning',
+      image: imageBase64 || null
     });
     saveData(data);
     renderKnowledgeTree();
@@ -1517,6 +1560,11 @@
           var rec = item.rec, idx = item.idx;
           html += '<li class="record-item"><div class="record-body">';
           html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
+          if (rec.image) {
+            html += '<div class="record-image-thumb" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">';
+            html += '<img src="' + rec.image + '" style="max-width:100%;max-height:120px;object-fit:contain;border-radius:4px;border:1px solid var(--green-200);cursor:pointer;">';
+            html += '</div>';
+          }
           html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
           html += '<div class="record-time">' + escHtml(rec.time) + '</div></div>';
           html += '<button class="btn-edit" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✏️</button>';
@@ -1569,6 +1617,24 @@
         if (textEl) textEl.classList.toggle('show');
       });
     });
+    // 图片缩略图点击放大
+    knowledgeTree.querySelectorAll('.record-image-thumb img').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var overlay = document.createElement('div');
+        overlay.className = 'image-viewer-overlay';
+        var img = document.createElement('img');
+        img.src = this.src;
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'image-viewer-close';
+        closeBtn.textContent = '✕';
+        closeBtn.addEventListener('click', function () { overlay.remove(); });
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) overlay.remove(); });
+        overlay.appendChild(img);
+        overlay.appendChild(closeBtn);
+        document.body.appendChild(overlay);
+      });
+    });
     knowledgeTree.querySelectorAll('.btn-edit').forEach(function (el) {
       el.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -1595,7 +1661,9 @@
       Object.keys(data[s]).forEach(function (t) {
         lines.push('### ' + t);
         var items = data[s][t].items || [];
-        items.forEach(function (r) { lines.push('- ' + r.summary); });
+        items.forEach(function (r) {
+          lines.push('- ' + r.summary + (r.image ? ' 📷' : ''));
+        });
       });
     });
     return lines.join('\n');
@@ -1749,6 +1817,27 @@
     img.src = base64;
   }
 
+  /* 压缩图片用于 localStorage 存储（600x400, JPEG 40%，约 20-30KB） */
+  function compressForStorage(base64) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        var maxW = 600, maxH = 400;
+        var w = img.width, h = img.height;
+        if (w > maxW) { h = h * (maxW / w); w = maxW; }
+        if (h > maxH) { w = w * (maxH / h); h = maxH; }
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.4));
+      };
+      img.onerror = function () { resolve(null); };
+      img.src = base64;
+    });
+  }
+
   /* ===== 构建 multimodal 消息内容 ===== */
   function buildContent(text, imageBase64) {
     var parts = [];
@@ -1856,12 +1945,12 @@
   }
 
   var mergeResolve = null;
-  function showMergeDialog(subject, topic, summary, text) {
+  function showMergeDialog(subject, topic, summary, text, imageBase64) {
     return new Promise(function (resolve) {
       mergeResolve = resolve;
       mergeTopicName.textContent = topic + '（' + subject + '）';
       mergeModalOverlay.style.display = 'flex';
-      mergeModalOverlay._pending = { subject: subject, topic: topic, summary: summary, text: text };
+      mergeModalOverlay._pending = { subject: subject, topic: topic, summary: summary, text: text, image: imageBase64 || null };
     });
   }
   function hideMergeDialog() {
@@ -1869,18 +1958,20 @@
     if (mergeResolve) { mergeResolve(null); mergeResolve = null; }
   }
 
-  document.getElementById('btnMergeAppend').addEventListener('click', function () {
+  document.getElementById('btnMergeAppend').addEventListener('click', async function () {
     var p = mergeModalOverlay._pending;
     if (p) {
       var data = loadData();
       if (!data[p.subject][p.topic]) data[p.subject][p.topic] = { items: [] };
       var now = new Date();
+      var storageImg = p.image ? await compressForStorage(p.image) : null;
       data[p.subject][p.topic].items.push({
         text: p.text, summary: p.summary,
         time: now.toLocaleString('zh-CN'), createdAt: now.toISOString(),
         reviewCount: 0, correctCount: 0,
         lastReviewed: null, nextReview: now.toISOString(),
-        interval: 1, status: 'learning'
+        interval: 1, status: 'learning',
+        image: storageImg
       });
       saveData(data);
       renderKnowledgeTree();
@@ -1890,11 +1981,17 @@
     hideMergeDialog();
   });
 
-  document.getElementById('btnMergeNew').addEventListener('click', function () {
+  document.getElementById('btnMergeNew').addEventListener('click', async function () {
     var p = mergeModalOverlay._pending;
     if (p) {
       var newTopic = p.topic + ' (分支)';
-      addKnowledge(p.text, p.subject, newTopic, p.summary);
+      if (p.image) {
+        var storageImg = await compressForStorage(p.image);
+        addKnowledge(p.text, p.subject, newTopic, p.summary, storageImg);
+      } else {
+        addKnowledge(p.text, p.subject, newTopic, p.summary);
+      }
+      refreshMindmap();
       showToast('已创建新分支', 'success');
     }
     hideMergeDialog();
@@ -1967,7 +2064,8 @@
 
     setLoading(true);
     try {
-      var result = await callDeepSeek(text || null, currentImageBase64);
+      var savedImage = currentImageBase64;
+      var result = await callDeepSeek(text || null, savedImage);
       clearImage();
 
       try {
@@ -1975,9 +2073,14 @@
         if (parsed.error) { showToast(parsed.error, 'error'); setLoading(false); return; }
 
         if (checkTopicMerge(parsed.subject, parsed.topic)) {
-          await showMergeDialog(parsed.subject, parsed.topic, parsed.summary, text || parsed.summary);
+          await showMergeDialog(parsed.subject, parsed.topic, parsed.summary, text || parsed.summary, savedImage);
         } else {
-          addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary);
+          if (savedImage) {
+            var storageImg = await compressForStorage(savedImage);
+            addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary, storageImg);
+          } else {
+            addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary);
+          }
         }
 
         userInput.value = '';
