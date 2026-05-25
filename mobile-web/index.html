@@ -1071,8 +1071,8 @@
       </select>
       <input type="text" id="settingsApiUrl" placeholder="API 地址" autocomplete="off">
       <div class="field-hint">API 端点地址，选择平台自动填充</div>
-      <input type="text" id="settingsModel" placeholder="模型名称" autocomplete="off">
-      <div class="field-hint">模型标识符，选择平台自动填充</div>
+      <select id="settingsModel" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 10px center;background-size:20px;"></select>
+      <div class="field-hint model-vision-hint"></div>
     </div>
     <div class="settings-section">
       <h4>📊 数据统计</h4>
@@ -1133,10 +1133,79 @@
 
 <!-- ===== 👤 我的板块 ===== -->
 <div class="panel" id="myPanel">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#a8cfb0;text-align:center;padding:24px;">
-    <div style="font-size:48px;margin-bottom:12px;">👤</div>
-    <p style="font-size:16px;font-weight:600;color:var(--green-700);margin-bottom:8px;">我的</p>
-    <p style="font-size:13px;">用户设置与数据管理即将上线</p>
+  <div class="backup-reminder" id="backupReminder" style="display:none;">
+    <span>⚠️ 已超过 7 天未备份数据，建议立即导出</span>
+    <button class="btn-sm" id="btnReminderExport">📤 导出</button>
+  </div>
+
+  <div class="my-section">
+    <h4>🔑 API 配置</h4>
+    <input type="password" id="myApiKey" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
+    <div class="field-hint">API Key 仅保存在你的浏览器本地</div>
+    <select id="myPlatform" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:15px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;margin-bottom:8px;">
+      <option value="deepseek">DeepSeek</option>
+      <option value="siliconflow">硅基流动（SiliconFlow）</option>
+      <option value="aliyun">阿里百炼（通义千问）</option>
+      <option value="groq">Groq</option>
+      <option value="custom">自定义</option>
+    </select>
+    <input type="text" id="myApiUrl" placeholder="API 地址" autocomplete="off" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);margin-bottom:4px;min-height:44px;-webkit-appearance:none;">
+    <div class="field-hint">API 端点地址，选择平台自动填充</div>
+    <select id="myModel" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 10px center;background-size:20px;"></select>
+    <div class="field-hint model-vision-hint"></div>
+    <div class="btn-row">
+      <button class="btn-outline" id="btnMySaveKey">保存配置</button>
+      <button class="btn-outline" id="btnMyTestConn">🔗 测试连接</button>
+    </div>
+    <div class="field-hint" id="myTestResult" style="margin-top:4px;"></div>
+  </div>
+
+  <div class="my-section">
+    <h4>📊 数据统计</h4>
+    <div class="stat-row"><span>知识条目</span><span class="stat-val" id="myStatRecords">0 条</span></div>
+    <div class="stat-row"><span>学科数</span><span class="stat-val" id="myStatSubjects">0 个</span></div>
+    <div class="stat-row"><span>知识点数</span><span class="stat-val" id="myStatTopics">0 个</span></div>
+    <div class="stat-row"><span>已掌握</span><span class="stat-val" id="myStatMastered">0 个</span></div>
+    <div class="stat-row"><span>复习打卡天数</span><span class="stat-val" id="myStatStreak">0 天</span></div>
+  </div>
+
+  <div class="my-section">
+    <h4>💾 数据管理</h4>
+    <div class="btn-row">
+      <button class="btn-outline" id="btnMyExport">📤 导出数据</button>
+      <button class="btn-outline" id="btnMyImport">📥 导入数据</button>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn-outline danger" id="btnMyClearAll">⚠️ 清空所有数据</button>
+    </div>
+  </div>
+
+  <div class="my-section">
+    <h4>📝 复习设置</h4>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+      <span style="font-size:14px;color:#475569;">每日复习题数上限</span>
+      <input type="number" id="myDailyLimit" value="20" min="1" max="100" style="width:70px;padding:8px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;text-align:center;font-family:inherit;outline:none;-webkit-appearance:none;">
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+      <span style="font-size:14px;color:#475569;">自动归档已掌握知识点</span>
+      <label style="position:relative;display:inline-block;width:48px;height:28px;">
+        <input type="checkbox" id="myAutoArchive" checked style="opacity:0;width:0;height:0;">
+        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--green-500);border-radius:28px;transition:.3s;" id="myAutoArchiveSlider"></span>
+        <span style="position:absolute;content:'';height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s;" id="myAutoArchiveKnob"></span>
+      </label>
+    </div>
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn-outline" id="btnMySaveReview">保存复习设置</button>
+    </div>
+  </div>
+
+  <div class="my-section">
+    <h4>ℹ️ 关于</h4>
+    <p style="font-size:13px;color:#64748b;line-height:1.8;">
+      <strong>KnowLeaf 知叶 v2.0</strong><br>
+      AI 驱动的学习笔记工具，支持文本/图片输入、思维导图展示、艾宾浩斯遗忘曲线复习。<br>
+      <a href="https://github.com/jungleG-chin/knowleaf" target="_blank" rel="noopener" style="color:var(--green-600);">GitHub 仓库</a>
+    </p>
   </div>
 </div>
 
@@ -1392,10 +1461,30 @@
 
   /* 平台预设 */
   var PLATFORM_PRESETS = {
-    deepseek:    { url: 'https://api.deepseek.com/chat/completions',          model: 'deepseek-chat' },
-    siliconflow: { url: 'https://api.siliconflow.cn/v1/chat/completions',    model: 'Qwen/Qwen2.5-72B-Instruct' },
-    aliyun:      { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-vl-max' },
-    groq:        { url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile' }
+    deepseek: {
+      url: 'https://api.deepseek.com/chat/completions',
+      defaultModel: 'deepseek-chat',
+      models: ['deepseek-chat', 'deepseek-reasoner'],
+      visionModels: []
+    },
+    siliconflow: {
+      url: 'https://api.siliconflow.cn/v1/chat/completions',
+      defaultModel: 'Qwen/Qwen2.5-72B-Instruct',
+      models: ['Qwen/Qwen2.5-72B-Instruct', 'Qwen/Qwen2-VL-72B-Instruct', 'Qwen/Qwen2.5-7B-Instruct', 'deepseek-ai/DeepSeek-V3'],
+      visionModels: ['Qwen/Qwen2-VL-72B-Instruct']
+    },
+    aliyun: {
+      url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+      defaultModel: 'qwen-vl-max',
+      models: ['qwen-vl-max', 'qwen-vl-plus', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
+      visionModels: ['qwen-vl-max', 'qwen-vl-plus']
+    },
+    groq: {
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      defaultModel: 'llama-3.3-70b-versatile',
+      models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+      visionModels: []
+    }
   };
 
   function getPlatformByUrl(url) {
@@ -1404,6 +1493,79 @@
       if (PLATFORM_PRESETS[keys[i]].url === url) return keys[i];
     }
     return 'custom';
+  }
+
+  /* 判断模型是否支持视觉 */
+  function isVisionModel(platform, model) {
+    if (!model) return false;
+    if (platform === 'custom') {
+      // 自定义平台靠关键词检测
+      var kw = ['vl', 'vision', 'gpt-4o', 'claude-3', 'gemini', 'pixtral', 'multimodal'];
+      var lower = model.toLowerCase();
+      for (var k = 0; k < kw.length; k++) {
+        if (lower.indexOf(kw[k]) !== -1) return true;
+      }
+      return false;
+    }
+    var preset = PLATFORM_PRESETS[platform];
+    if (preset && preset.visionModels) {
+      return preset.visionModels.indexOf(model) !== -1;
+    }
+    return false;
+  }
+
+  /* 渲染模型下拉框 */
+  function renderModelSelect(platform, selectEl, savedModel) {
+    var preset = PLATFORM_PRESETS[platform];
+    selectEl.innerHTML = '';
+    if (preset) {
+      // 已知平台：用 models 数组填充下拉框
+      selectEl.style.display = '';
+      var models = preset.models.slice();
+      // 如果用户之前保存的模型不在列表中，追加到末尾
+      if (savedModel && models.indexOf(savedModel) === -1) {
+        models.push(savedModel);
+      }
+      var defaultModel = preset.defaultModel;
+      models.forEach(function (m) {
+        var opt = document.createElement('option');
+        opt.value = m;
+        var isVision = isVisionModel(platform, m);
+        opt.textContent = m + (isVision ? ' 👁' : ' 📝');
+        if (m === savedModel || (!savedModel && m === defaultModel)) {
+          opt.selected = true;
+        }
+        selectEl.appendChild(opt);
+      });
+      // 更新视觉能力提示
+      var hintEl = selectEl.parentNode.querySelector('.model-vision-hint');
+      if (hintEl) {
+        var selectedModel = selectEl.value || defaultModel;
+        if (isVisionModel(platform, selectedModel)) {
+          hintEl.textContent = '👁 当前模型支持图片识别';
+          hintEl.style.color = '#16a34a';
+        } else {
+          hintEl.textContent = '📝 当前模型仅支持文本，上传图片前请切换';
+          hintEl.style.color = '#b45309';
+        }
+      }
+    } else {
+      // 自定义平台：降级为文本框
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.id = selectEl.id;
+      input.placeholder = '模型名称';
+      input.value = savedModel || '';
+      input.style.cssText = 'width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);min-height:44px;-webkit-appearance:none;';
+      selectEl.parentNode.replaceChild(input, selectEl);
+      var hintEl = input.parentNode.querySelector('.model-vision-hint');
+      if (hintEl) {
+        hintEl.textContent = '自定义模型，请手动输入模型标识符';
+        hintEl.style.color = '#94a3b8';
+      }
+      return input;
+    }
+    return selectEl;
   }
 
   /* DOM 引用 */
@@ -1963,15 +2125,15 @@
   modalOverlay.addEventListener('click', function (e) { if (e.target === modalOverlay) hideApiKeyModal(); });
 
   /* 设置面板 */
-  btnSettings.addEventListener('click', openSettingsPanel);
   function openSettingsPanel() {
     settingsApiKeyInput.value = getApiKey() || '';
-    // 模型配置
     var currentUrl = getApiUrl();
     settingsApiUrl.value = currentUrl;
-    settingsModel.value = getModel();
-    settingsPlatform.value = getPlatformByUrl(currentUrl);
-    toggleCustomFields();
+    var platform = getPlatformByUrl(currentUrl);
+    settingsPlatform.value = platform;
+    settingsApiUrl.readOnly = (platform !== 'custom');
+    var savedModel = getModel();
+    settingsModel = renderModelSelect(platform, settingsModel, savedModel);
     updateSettingsStats();
     settingsOverlay.style.display = 'flex';
   }
@@ -1987,25 +2149,21 @@
     document.getElementById('statTokens').textContent = '~' + Math.round(JSON.stringify(data).length / 2) + ' tokens';
   }
 
-  /* 平台切换：自动填充 URL 和模型 */
-  function toggleCustomFields() {
-    var isCustom = settingsPlatform.value === 'custom';
-    settingsApiUrl.readOnly = !isCustom;
-    settingsModel.readOnly = !isCustom;
-    if (!isCustom) {
-      var preset = PLATFORM_PRESETS[settingsPlatform.value];
-      if (preset) {
-        settingsApiUrl.value = preset.url;
-        settingsModel.value = preset.model;
-      }
+  settingsPlatform.addEventListener('change', function () {
+    var platform = settingsPlatform.value;
+    settingsApiUrl.readOnly = (platform !== 'custom');
+    if (platform !== 'custom') {
+      var preset = PLATFORM_PRESETS[platform];
+      if (preset) settingsApiUrl.value = preset.url;
     }
-  }
-  settingsPlatform.addEventListener('change', toggleCustomFields);
+    var savedModel = getModel();
+    settingsModel = renderModelSelect(platform, settingsModel, savedModel);
+  });
 
-  // 保存模型配置（关闭设置面板或手动保存 Key 时一并保存）
   function saveModelConfig() {
     saveApiUrl(settingsApiUrl.value.trim());
-    saveModel(settingsModel.value.trim());
+    var mv = settingsModel.tagName === 'SELECT' ? settingsModel.value : settingsModel.value;
+    saveModel(mv.trim());
   }
 
   btnSaveSettingsKey.addEventListener('click', function () {
@@ -2273,6 +2431,16 @@
 
     if (!text && !hasImage) { showToast('请先输入学习内容或上传图片', 'error'); return; }
 
+    // 视觉模型检查
+    if (hasImage) {
+      var currentPlatform = getPlatformByUrl(getApiUrl());
+      var currentModel = getModel();
+      if (!isVisionModel(currentPlatform, currentModel)) {
+        showToast('当前模型 ' + currentModel + ' 不支持图片识别，请切换到支持视觉的模型（如 qwen-vl-max、Qwen2-VL）', 'error');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       var savedImage = currentImageBase64;
@@ -2472,6 +2640,146 @@
   });
 
   // 如果初始就在复习板块（通过 URL hash 等），暂不处理，默认进入学习板块
+
+  /* ===== 我的板块 UI ===== */
+  var myApiKeyEl      = document.getElementById('myApiKey');
+  var myPlatformEl    = document.getElementById('myPlatform');
+  var myApiUrlEl      = document.getElementById('myApiUrl');
+  var myModelEl       = document.getElementById('myModel');
+  var myTestResultEl  = document.getElementById('myTestResult');
+  var myDailyLimitEl  = document.getElementById('myDailyLimit');
+  var myAutoArchiveEl = document.getElementById('myAutoArchive');
+  var backupReminderEl = document.getElementById('backupReminder');
+
+  function loadMyPanel() {
+    myApiKeyEl.value = getApiKey() || '';
+    var currentUrl = getApiUrl();
+    myApiUrlEl.value = currentUrl;
+    var platform = getPlatformByUrl(currentUrl);
+    myPlatformEl.value = platform;
+    toggleMyCustom();
+    var savedModel = getModel();
+    myModelEl = renderModelSelect(platform, myModelEl, savedModel);
+    var cfg = getReviewConfig();
+    myDailyLimitEl.value = cfg.dailyLimit || 20;
+    myAutoArchiveEl.checked = cfg.autoArchive !== false;
+    updateAutoArchiveSlider();
+    updateMyStats();
+    checkBackupReminder();
+  }
+
+  function updateMyStats() {
+    var data = loadData();
+    var stats = getReviewStats(data);
+    document.getElementById('myStatRecords').textContent = stats.total + ' 条';
+    document.getElementById('myStatSubjects').textContent = countSubjects(data) + ' 个';
+    document.getElementById('myStatTopics').textContent = countTopics(data) + ' 个';
+    document.getElementById('myStatMastered').textContent = stats.mastered + ' 个';
+    var streak = parseInt(localStorage.getItem('knowleaf_review_streak') || '0', 10);
+    document.getElementById('myStatStreak').textContent = streak + ' 天';
+  }
+
+  function toggleMyCustom() {
+    var isCustom = myPlatformEl.value === 'custom';
+    myApiUrlEl.readOnly = !isCustom;
+    if (!isCustom) {
+      var preset = PLATFORM_PRESETS[myPlatformEl.value];
+      if (preset) myApiUrlEl.value = preset.url;
+    }
+    var savedModel = getModel();
+    myModelEl = renderModelSelect(myPlatformEl.value, myModelEl, savedModel);
+  }
+
+  function updateAutoArchiveSlider() {
+    var slider = document.getElementById('myAutoArchiveSlider');
+    var knob = document.getElementById('myAutoArchiveKnob');
+    if (myAutoArchiveEl.checked) {
+      slider.style.background = 'var(--green-500)';
+      knob.style.left = '23px';
+    } else {
+      slider.style.background = '#d1d5db';
+      knob.style.left = '3px';
+    }
+  }
+
+  function checkBackupReminder() {
+    var lastBackup = localStorage.getItem('knowleaf_last_backup') || '';
+    if (!lastBackup) { backupReminderEl.style.display = 'flex'; return; }
+    var days = Math.floor((Date.now() - new Date(lastBackup).getTime()) / 86400000);
+    backupReminderEl.style.display = days >= 7 ? 'flex' : 'none';
+  }
+
+  function markBackupDone() {
+    localStorage.setItem('knowleaf_last_backup', new Date().toISOString());
+    checkBackupReminder();
+  }
+
+  myPlatformEl.addEventListener('change', toggleMyCustom);
+  myAutoArchiveEl.addEventListener('change', updateAutoArchiveSlider);
+
+  document.getElementById('btnMySaveKey').addEventListener('click', function () {
+    var key = myApiKeyEl.value.trim();
+    if (!key) { showToast('请输入 API Key', 'error'); return; }
+    saveApiKey(key);
+    saveApiUrl(myApiUrlEl.value.trim());
+    var mv = myModelEl.tagName === 'SELECT' ? myModelEl.value : myModelEl.value;
+    saveModel(mv.trim());
+    showToast('配置已保存', 'success');
+  });
+
+  document.getElementById('btnMyTestConn').addEventListener('click', async function () {
+    myTestResultEl.textContent = '⏳ 测试中...';
+    myTestResultEl.style.color = '#94a3b8';
+    try {
+      var result = await callDeepSeek('测试连接', null);
+      if (result) {
+        myTestResultEl.textContent = '✅ 连接成功';
+        myTestResultEl.style.color = '#16a34a';
+      }
+    } catch (err) {
+      myTestResultEl.textContent = '❌ ' + err.message;
+      myTestResultEl.style.color = '#dc2626';
+    }
+  });
+
+  document.getElementById('btnMySaveReview').addEventListener('click', function () {
+    var cfg = getReviewConfig();
+    cfg.dailyLimit = parseInt(myDailyLimitEl.value, 10) || 20;
+    cfg.autoArchive = myAutoArchiveEl.checked;
+    saveReviewConfig(cfg);
+    showToast('复习设置已保存', 'success');
+  });
+
+  document.getElementById('btnMyExport').addEventListener('click', function () {
+    markBackupDone();
+    exportData();
+  });
+
+  document.getElementById('btnMyImport').addEventListener('click', function () { importFileInput.click(); });
+
+  document.getElementById('btnMyClearAll').addEventListener('click', function () {
+    if (!confirm('⚠️ 高风险操作：确定要清空全部知识数据吗？')) return;
+    if (!confirm('此操作不可恢复！所有知识点和复习记录将被永久删除。再次确认清空？')) return;
+    clearAllData();
+    updateMyStats();
+  });
+
+  document.getElementById('btnReminderExport').addEventListener('click', function () {
+    markBackupDone();
+    exportData();
+  });
+
+  var myTab = document.querySelector('[data-panel="myPanel"]');
+  myTab.addEventListener('click', function () { loadMyPanel(); });
+
+  // 头部的设置按钮跳转到我的板块
+  btnSettings.addEventListener('click', function () {
+    navTabs.forEach(function (t) { t.classList.remove('active'); });
+    panels.forEach(function (p) { p.classList.remove('active'); });
+    document.querySelector('[data-panel="myPanel"]').classList.add('active');
+    document.getElementById('myPanel').classList.add('active');
+    loadMyPanel();
+  });
 
   /* 初始化 */
   (async function initApp() {
