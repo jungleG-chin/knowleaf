@@ -178,6 +178,13 @@
     width: 100%;
     height: 100%;
     display: none;
+    padding: 8px;
+  }
+  .mindmap-body svg markmap-node {
+    cursor: pointer;
+  }
+  .mindmap-body svg markmap-circle {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
   }
   .mindmap-body.has-data .placeholder { display: none; }
   .mindmap-body.has-data svg { display: block; }
@@ -2122,7 +2129,7 @@
       mmInstance.setData(root);
       await mmInstance.fit();
     } else {
-      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 2, duration: 300 }, root);
+      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 1, duration: 300, paddingX: 18, spacingHorizontal: 80, spacingVertical: 12, fitRatio: 0.85, initialExpandLevel: -1 }, root);
     }
   }
 
@@ -2318,11 +2325,11 @@
     var hasImage = !!imageBase64;
     var systemPrompt;
     if (hasImage && !text) {
-      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点。输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}。如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。';
+      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点。输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}。如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。';
     } else if (hasImage && text) {
-      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary","parentTopic"}。subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（如果是子概念就填，没有就填null）。只输出JSON不要markdown标记。';
+      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary","parentTopic"}。subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（如果是子概念就填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。';
     } else {
-      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。输出纯JSON数组格式：[{subject,topic,summary,parentTopic}]。每个对象: subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（子概念才填，没有就填null）。只输出JSON不要markdown标记。';
+      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。输出纯JSON数组格式：[{subject,topic,summary,parentTopic}]。每个对象: subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（子概念才填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。';
     }
 
     var userContent = buildContent(text, imageBase64);
