@@ -1117,6 +1117,77 @@
     padding: 4px 8px;
     min-height: 30px;
   }
+
+  /* ===== 知识详情页 ===== */
+  .detail-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); z-index: 1000;
+    display: flex; align-items: flex-end; justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+  .detail-container {
+    width: 100%; max-width: 700px; height: 92vh;
+    background: #fff; border-radius: 20px 20px 0 0;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+    animation: slideUp 0.3s ease;
+  }
+  .detail-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--green-100); flex-shrink: 0;
+  }
+  .detail-back {
+    background: none; border: 1px solid var(--green-200); border-radius: 8px;
+    padding: 6px 14px; font-size: 14px; color: var(--green-700);
+    cursor: pointer; font-family: inherit; min-height: 36px;
+  }
+  .detail-back:active { background: var(--green-50); }
+  .detail-breadcrumb {
+    font-size: 13px; color: var(--green-600);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .detail-body {
+    flex: 1; overflow-y: auto; padding: 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .detail-body h2 { font-size: 20px; color: #1e293b; margin-bottom: 8px; }
+  .detail-body .detail-meta { font-size: 12px; color: #94a3b8; margin-bottom: 16px; }
+  .detail-body .detail-section { margin-bottom: 20px; }
+  .detail-body .detail-section h4 {
+    font-size: 14px; color: var(--green-700); margin-bottom: 8px;
+    padding-bottom: 4px; border-bottom: 2px solid var(--green-100);
+  }
+  .detail-body .detail-section p { font-size: 15px; line-height: 1.8; color: #334155; }
+  .detail-body .detail-image {
+    width: 100%; max-height: 300px; object-fit: contain;
+    border-radius: 8px; border: 1px solid var(--green-100);
+    margin-bottom: 16px; background: #f8fafc;
+  }
+  .detail-body .related-list { list-style: none; padding: 0; }
+  .detail-body .related-list li {
+    padding: 10px 12px; margin-bottom: 6px;
+    background: var(--green-50); border-radius: 8px;
+    cursor: pointer; font-size: 14px; color: #334155;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .detail-body .related-list li:active { background: var(--green-100); }
+  .detail-body .analysis-block {
+    background: linear-gradient(135deg, #fefce8, #f0fdf4);
+    border-radius: 12px; padding: 16px; margin-bottom: 20px;
+    border-left: 3px solid var(--green-400);
+  }
+  .detail-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-top: 1px solid var(--green-100); flex-shrink: 0;
+  }
+  .detail-nav {
+    padding: 8px 16px; font-size: 13px; border: 1px solid var(--green-200);
+    border-radius: 8px; background: #fff; color: var(--green-700); cursor: pointer;
+    min-height: 36px; font-family: inherit;
+  }
+  .detail-nav:disabled { opacity: 0.35; cursor: default; }
+  .detail-nav:not(:disabled):active { background: var(--green-50); }
+  .detail-pos { font-size: 12px; color: #94a3b8; }
 </style>
 </head>
 <body>
@@ -1183,8 +1254,8 @@
     </div>
     <div class="search-bar">
       <input class="search-input" id="searchInput" placeholder="🔍 搜索学科、知识点或内容..." autocomplete="off">
-      <select id="subjectFilter" style="padding:8px 12px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:40px;max-width:140px;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;flex-shrink:0;">
-        <option value="">全学科</option>
+      <select id="subjectFilter" title="按学科筛选知识列表" aria-label="筛选学科" style="padding:8px 12px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:40px;max-width:140px;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;flex-shrink:0;">
+        <option value="">📂 学科筛选</option>
       </select>
     </div>
     <div class="knowledge-tree" id="knowledgeTree">
@@ -1255,6 +1326,22 @@
 </div>
 
 </div><!-- /learnPanel -->
+
+<!-- ===== 知识详情页 ===== -->
+<div class="detail-overlay" id="detailOverlay" style="display:none;">
+  <div class="detail-container">
+    <div class="detail-header">
+      <button class="detail-back" id="detailBack">← 返回</button>
+      <div class="detail-breadcrumb" id="detailBreadcrumb"></div>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+    <div class="detail-footer">
+      <button class="detail-nav" id="detailPrev" disabled>◀ 上一条</button>
+      <span class="detail-pos" id="detailPos"></span>
+      <button class="detail-nav" id="detailNext" disabled>下一条 ▶</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== 📝 复习板块 ===== -->
 <div class="panel" id="reviewPanel">
@@ -2153,7 +2240,7 @@
     var keywords = getSearchKeywords();
     if (keywords.length === 0) return true;
     var haystack = (subj + ' ' + topic + ' ' + (rec.summary||'') + ' ' + (rec.text||'')).toLowerCase();
-    return keywords.every(function(kw) {
+    return keywords.some(function(kw) {
       return haystack.indexOf(kw) !== -1;
     });
   }
@@ -2174,7 +2261,7 @@
     if (!sel) return;
     var data = loadData();
     var subjects = Object.keys(data);
-    var options = '<option value="">全学科</option>';
+    var options = '<option value="">📂 学科筛选</option>';
     subjects.forEach(function (s) {
       var selected = currentSubjectFilter === s ? ' selected' : '';
       options += '<option value="' + escHtml(s) + '"' + selected + '>' + escHtml(s) + '</option>';
@@ -2247,7 +2334,7 @@
           var rec = item.rec, idx = item.idx;
           var highlightClass = (highlightRecord && highlightRecord.subject === subj && highlightRecord.topic === vt.name) ? ' highlight-flash' : '';
           html += '<li class="record-item' + highlightClass + '"><div class="record-body">';
-          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + highlightText(rec.summary, keywords) + '</div>';
+          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '" style="cursor:pointer;" onclick="openDetailPage(\'' + escJs(subj) + '\',\'' + escJs(vt.name) + '\',' + idx + ');event.stopPropagation();">' + highlightText(rec.summary, keywords) + '</div>';
           if (rec.imageId || rec.image) {
             html += '<div class="record-image-thumb">';
             if (rec.imageId) {
@@ -2304,6 +2391,7 @@
   }
 
   function escHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
 
   function bindTreeEvents() {
     knowledgeTree.querySelectorAll('.subject-toggle').forEach(function (el) {
@@ -2462,11 +2550,20 @@
 
   /* Markmap */
   function buildMarkdown(data, expandSubject) {
-    var lines = ['# 我的知识树'];
-    var subjects = Object.keys(data);
-    if (subjects.length === 0) return '';
+    var lines = [];
+    var allSubjects = Object.keys(data);
+    if (allSubjects.length === 0) return '';
     // expandSubject: true=展开全部, null=折叠全部, string=只展开该学科
     var expandAll = (expandSubject === true);
+    // 选中单一学科时，只处理该学科，其他学科不输出
+    var subjects;
+    if (typeof expandSubject === 'string' && expandSubject !== null) {
+      lines.push('# ' + expandSubject);
+      subjects = [expandSubject];
+    } else {
+      lines.push('# 我的知识树');
+      subjects = allSubjects;
+    }
     subjects.forEach(function (s) {
       lines.push('## ' + s);
       if (!expandAll && expandSubject !== s) {
@@ -2579,6 +2676,12 @@
     var subject = chip.getAttribute('data-subject') || null;
     currentMindmapSubject = subject;
     refreshMindmap();
+    // 切换导图学科时清空知识列表搜索
+    if (searchInput && currentFilter) {
+      currentFilter = '';
+      searchInput.value = '';
+      renderKnowledgeTree();
+    }
   });
 
   /* API Key 弹窗（首次使用） */
@@ -2668,7 +2771,18 @@
   importFileInput.addEventListener('change', function () { if (this.files && this.files[0]) importData(this.files[0]); });
 
   /* 搜索 */
-  searchInput.addEventListener('input', function () { currentFilter = this.value.trim(); renderKnowledgeTree(); });
+  var isComposing = false;
+  searchInput.addEventListener('compositionstart', function () { isComposing = true; });
+  searchInput.addEventListener('compositionend', function () {
+    isComposing = false;
+    currentFilter = this.value.trim();
+    renderKnowledgeTree();
+  });
+  searchInput.addEventListener('input', function () {
+    if (isComposing) return;
+    currentFilter = this.value.trim();
+    renderKnowledgeTree();
+  });
   var subjectFilterEl = document.getElementById('subjectFilter');
   if (subjectFilterEl) {
     subjectFilterEl.addEventListener('change', function () { currentSubjectFilter = this.value; renderKnowledgeTree(); });
@@ -3460,6 +3574,154 @@
     renderKnowledgeTree();
     refreshMindmap();
   })();
+
+  /* ===== 知识详情页 ===== */
+  var detailNavItems = [];
+  var detailNavIndex = -1;
+
+  function buildDetailNav(subject) {
+    var data = loadData();
+    detailNavItems = [];
+    if (!data[subject]) return;
+    Object.keys(data[subject]).forEach(function (t) {
+      var items = data[subject][t].items || [];
+      items.forEach(function (r, i) {
+        detailNavItems.push({ subject: subject, topic: t, idx: i });
+      });
+    });
+  }
+
+  function getRelatedForDetail(subject, excludeTopic) {
+    var data = loadData();
+    if (!data[subject]) return [];
+    var result = [];
+    Object.keys(data[subject]).forEach(function (t) {
+      if (t === excludeTopic) return;
+      (data[subject][t].items || []).forEach(function (r, i) {
+        result.push({ rec: r, topic: t, idx: i, lastReview: r.lastReview || 0 });
+      });
+    });
+    result.sort(function (a, b) { return (a.lastReview || 0) - (b.lastReview || 0); });
+    return result.slice(0, 5);
+  }
+
+  function renderDetailPage(rec, subject, topic, idx) {
+    var body = document.getElementById('detailBody');
+    var breadcrumb = document.getElementById('detailBreadcrumb');
+    breadcrumb.textContent = subject + ' › ' + topic;
+
+    var summary = rec.summary || '', text = rec.text || '';
+    var displayTitle = (summary || text || topic);
+    if (displayTitle.length > 50) displayTitle = displayTitle.substring(0, 50) + '...';
+    var html = '<h2>' + escHtml(displayTitle) + '</h2>';
+    html += '<div class="detail-meta">' + escHtml(rec.time || '') + ' · ' + escHtml(subject) + '</div>';
+
+    // 图片
+    if (rec.imageId) {
+      html += '<img class="detail-image" id="detailImage" src="" style="display:none;" onload="this.style.display=\'block\'">';
+      setTimeout(function () {
+        var el = document.getElementById('detailImage');
+        if (el && rec.imageId) {
+          IMG_DB.get(rec.imageId).then(function (b) { if (b) { el.src = b; el.style.display = 'block'; } }).catch(function () {});
+        }
+      }, 50);
+    } else if (rec.image) {
+      html += '<img class="detail-image" src="' + escHtml(rec.image) + '" onerror="this.style.display=\'none\'">';
+    }
+
+    // AI 分析
+    if (rec.analysis) {
+      html += '<div class="analysis-block"><div class="detail-section"><h4>🤖 AI 深度分析</h4>';
+      html += '<div style="font-size:14px;line-height:1.8;">' + (typeof rec.analysis === 'string' ? rec.analysis.replace(/\n/g, '<br>') : '') + '</div></div></div>';
+    }
+
+    // 原始内容
+    if (text && text !== summary) {
+      html += '<div class="detail-section"><h4>📄 原始内容</h4><p>' + escHtml(text).replace(/\n/g, '<br>') + '</p></div>';
+    }
+
+    // AI 摘要
+    if (summary && summary !== displayTitle) {
+      html += '<div class="detail-section"><h4>📝 AI 摘要</h4><p>' + escHtml(summary) + '</p></div>';
+    }
+
+    // 关联知识
+    html += '<div class="detail-section"><h4>🔗 关联知识</h4>';
+    var related = getRelatedForDetail(subject, topic);
+    if (related.length === 0) {
+      html += '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:14px;">暂无关联知识</div>';
+    } else {
+      html += '<ul class="related-list">';
+      related.forEach(function (r) {
+        var s = r.rec.summary || r.rec.text || r.topic;
+        if (s.length > 30) s = s.substring(0, 30) + '...';
+        html += '<li onclick="openDetailPage(\'' + escJs(subject) + '\',\'' + escJs(r.topic) + '\',' + r.idx + ')" style="cursor:pointer;">';
+        html += '<span>' + escHtml(s) + '</span>';
+        html += '<span style="font-size:11px;color:var(--green-600);background:rgba(255,255,255,.7);padding:2px 8px;border-radius:4px;">' + escHtml(r.topic) + '</span>';
+        html += '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+    updateDetailNav();
+  }
+
+  function updateDetailNav() {
+    var p = document.getElementById('detailPrev'), n = document.getElementById('detailNext'), pos = document.getElementById('detailPos');
+    if (detailNavItems.length <= 1) { p.disabled = true; n.disabled = true; pos.textContent = ''; return; }
+    p.disabled = (detailNavIndex <= 0); n.disabled = (detailNavIndex >= detailNavItems.length - 1);
+    pos.textContent = (detailNavIndex + 1) + ' / ' + detailNavItems.length;
+  }
+
+  function openDetailPage(subject, topic, idx) {
+    var data = loadData();
+    if (!data[subject] || !data[subject][topic]) return;
+    var items = data[subject][topic].items;
+    var rec = items[idx];
+    if (!rec) return;
+    buildDetailNav(subject);
+    detailNavIndex = -1;
+    for (var i = 0; i < detailNavItems.length; i++) {
+      if (detailNavItems[i].topic === topic && detailNavItems[i].idx === idx) {
+        detailNavIndex = i; break;
+      }
+    }
+    renderDetailPage(rec, subject, topic, idx);
+    document.getElementById('detailOverlay').style.display = 'flex';
+  }
+
+  function closeDetailPage() {
+    document.getElementById('detailOverlay').style.display = 'none';
+  }
+
+  document.getElementById('detailBack').addEventListener('click', closeDetailPage);
+  document.getElementById('detailOverlay').addEventListener('click', function (e) {
+    if (e.target === this) closeDetailPage();
+  });
+  document.getElementById('detailPrev').addEventListener('click', function () {
+    if (detailNavIndex <= 0) return;
+    detailNavIndex--;
+    var item = detailNavItems[detailNavIndex];
+    if (!item) return;
+    var data = loadData();
+    var rec = data[item.subject][item.topic].items[item.idx];
+    if (!rec) return;
+    renderDetailPage(rec, item.subject, item.topic, item.idx);
+    document.getElementById('detailBody').scrollTop = 0;
+  });
+  document.getElementById('detailNext').addEventListener('click', function () {
+    if (detailNavIndex >= detailNavItems.length - 1) return;
+    detailNavIndex++;
+    var item = detailNavItems[detailNavIndex];
+    if (!item) return;
+    var data = loadData();
+    var rec = data[item.subject][item.topic].items[item.idx];
+    if (!rec) return;
+    renderDetailPage(rec, item.subject, item.topic, item.idx);
+    document.getElementById('detailBody').scrollTop = 0;
+  });
 })();
 </script>
 
