@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>KnowLeaf 知叶</title>
+<title>KnowLeaf 知叶 — 一叶知秋，求知叶矣</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 3C16 3 5 9 5 19C5 25 9 29 13 29C15 29 17 27 17 27C17 27 19 29 21 29C25 29 29 25 29 19C29 9 18 3 16 3Z' fill='%2322c55e'/><line x1='16' y1='17' x2='16' y2='29' stroke='%23166534' stroke-width='1.5'/><path d='M16 17L16 9' stroke='%23166534' stroke-width='1' opacity='0.6'/></svg>">
 <style>
   :root {
@@ -44,11 +44,18 @@
     border-bottom: 1px solid var(--green-200);
   }
   .header .logo {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .header .logo .logo-main {
     display: flex; align-items: center; gap: 8px;
     font-size: 18px; font-weight: 700;
     color: var(--green-800);
   }
-  .header .logo span { font-size: 22px; }
+  .header .logo .logo-main span { font-size: 22px; }
+  .header .logo .logo-tagline {
+    font-size: 11px; font-weight: 400; color: var(--green-600);
+    padding-left: 2px; letter-spacing: 0.5px;
+  }
   .header .btn-settings {
     background: none;
     border: 1px solid var(--green-300);
@@ -1069,7 +1076,10 @@
 
 <!-- 顶部标题栏 -->
 <div class="header">
-  <div class="logo"><span>🍃</span>KnowLeaf 知叶</div>
+  <div class="logo">
+    <div class="logo-main"><span>🍃</span>KnowLeaf 知叶</div>
+    <div class="logo-tagline">一叶知秋，求知叶矣 · One leaf, all you need to know.</div>
+  </div>
   <button class="btn-settings" id="btnSettings">⚙ 设置</button>
 </div>
 
@@ -1300,7 +1310,7 @@
   <div class="my-section">
     <h4>ℹ️ 关于</h4>
     <p style="font-size:13px;color:#64748b;line-height:1.8;">
-      <strong>KnowLeaf 知叶 v2.0</strong><br>
+      <strong>KnowLeaf 知叶 v1.0</strong><br>
       AI 驱动的学习笔记工具，支持文本/图片输入、思维导图展示、艾宾浩斯遗忘曲线复习。<br>
       <a href="https://github.com/jungleG-chin/knowleaf" target="_blank" rel="noopener" style="color:var(--green-600);">GitHub 仓库</a>
     </p>
