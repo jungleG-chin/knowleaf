@@ -972,6 +972,97 @@
     font-weight: 700;
     color: var(--green-700);
   }
+
+  /* ===== AI 分析弹窗 ===== */
+  .analyze-card { max-width: 420px; max-height: 70vh; overflow-y: auto; }
+  .analyze-content { font-size: 14px; line-height: 1.8; color: #334155; padding: 12px 0; }
+  .analyze-content h4 { color: #15803d; margin: 16px 0 8px; font-size: 15px; }
+  .analyze-content strong { color: #166534; }
+  .analyze-content li { margin-left: 18px; margin-bottom: 4px; }
+
+  /* ===== 设置面板紧凑布局 ===== */
+  .settings-section {
+    margin-bottom: 14px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--green-200);
+  }
+  .settings-section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green-700);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: var(--green-50);
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .stat-row .stat-val { font-weight: 600; color: var(--green-700); }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn-row .btn-outline {
+    flex: 1;
+    min-width: 80px;
+    text-align: center;
+    justify-content: center;
+  }
+  .btn-outline {
+    padding: 9px 14px;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    font-size: 13px;
+    background: rgba(255,255,255,.5);
+    color: var(--green-700);
+    cursor: pointer;
+    min-height: 44px;
+    -webkit-appearance: none;
+  }
+  .btn-outline:active { background: var(--green-100); }
+  .btn-outline.danger { border-color: #fecaca; color: #dc2626; }
+  .btn-outline.danger:active { background: #fef2f2; }
+
+  .review-settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .review-settings-row input[type="number"] {
+    width: 70px;
+    text-align: center;
+  }
+  .settings-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .model-vision-hint {
+    font-size: 12px;
+    color: var(--green-600);
+    margin-top: 4px;
+  }
+  .btn-ai-analyze {
+    font-size: 11px;
+    padding: 4px 8px;
+    min-height: 30px;
+  }
 </style>
 </head>
 <body>
@@ -1259,6 +1350,18 @@
         <button class="btn-cancel" id="btnMergeNew">创建新分支</button>
         <button class="btn-save" id="btnMergeAppend">追加到现有</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI 深度分析弹窗 -->
+<div class="modal-overlay" id="analyzeOverlay" style="display:none;">
+  <div class="modal-card analyze-card">
+    <h3 id="analyzeTitle">🤖 AI 深度分析</h3>
+    <div class="analyze-content" id="analyzeContent"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCloseAnalyze">关闭</button>
+      <button class="btn-outline" id="btnCopyAnalyze">📋 复制</button>
     </div>
   </div>
 </div>
@@ -1924,6 +2027,7 @@
           html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
           html += '<div class="record-time">' + escHtml(rec.time) + '</div></div>';
           html += '<button class="btn-edit" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✏️</button>';
+          html += '<button class="btn-ai-analyze btn-outline" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" style="font-size:11px;padding:4px 8px;min-height:30px;">🤖</button>';
           html += '<button class="btn-delete" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✕</button>';
           html += '</li>';
         });
@@ -2316,11 +2420,33 @@
   btnRemoveImage.addEventListener('click', clearImage);
 
   /* ===== 统一 API 调用（支持文本 + 图片） ===== */
-  async function callDeepSeek(text, imageBase64) {
+  async function callDeepSeek(text, imageBase64, analyzeMode) {
     var apiKey = getApiKey();
     if (!apiKey) { apiKey = await showApiKeyModal(); if (!apiKey) return null; }
     var apiUrl = getApiUrl();
     var model  = getModel();
+
+    if (analyzeMode) {
+      var analyzePrompt = '你是一个学习助手。用户正在复习某个知识点，请对该知识点进行深度分析，输出格式化的 markdown 内容，包含以下部分（根据内容灵活调整）：\n1. **核心概念**：用通俗语言解释这个知识点\n2. **关键要点**：列出3-5个必须掌握的要点\n3. **易错提醒**：常见错误和理解误区\n4. **记忆技巧**：助记口诀或联想方法\n5. **关联知识**：与哪些其他知识点相关联\n6. **自测题**：2-3道选择题或填空题（带答案）\n\n用中文回答，语言简洁易懂，适合大学生复习使用。';
+      var resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model: model, temperature: 0.7,
+          messages: [
+            { role: 'system', content: analyzePrompt },
+            { role: 'user', content: text }
+          ]
+        })
+      });
+      if (!resp.ok) {
+        var errText3 = '';
+        try { var errJson3 = JSON.parse(await resp.text()); errText3 = errJson3.error && errJson3.error.message ? errJson3.error.message : ''; } catch (e) {}
+        throw new Error('API 请求失败 (' + resp.status + ')' + (errText3 ? ': ' + errText3 : ''));
+      }
+      var data3 = await resp.json();
+      return data3.choices[0].message.content;
+    }
 
     var hasImage = !!imageBase64;
     var systemPrompt;
@@ -2871,6 +2997,58 @@
     if (changed) saveData(data);
     return changed;
   }
+
+  /* ===== AI 深度分析 ===== */
+  function showAnalyzeResult(title, content) {
+    document.getElementById('analyzeTitle').textContent = '🤖 ' + title;
+    var html = content
+      .replace(/### (.*)/g, '<h4>$1</h4>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.*)/gm, '<li>$1</li>')
+      .replace(/\n/g, '<br>');
+    document.getElementById('analyzeContent').innerHTML = html;
+    document.getElementById('analyzeOverlay').style.display = 'flex';
+  }
+
+  async function aiAnalyzeTopic(subject, topic) {
+    var data = loadData();
+    if (!data[subject] || !data[subject][topic]) return;
+    var items = data[subject][topic].items || [];
+    var allText = items.map(function (item) { return item.text || item.summary; }).join('\n\n');
+    if (!allText.trim()) { showToast('该知识点暂无详细内容', 'error'); return; }
+
+    var btn = document.querySelector('.btn-ai-analyze[data-subject="' + subject + '"][data-topic="' + topic + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+    try {
+      var result = await callDeepSeek('请对这个知识点进行深度分析：\n' + allText, null, true);
+      showAnalyzeResult(topic, result);
+    } catch (err) {
+      showToast('AI 分析失败: ' + err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🤖'; }
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('btn-ai-analyze')) {
+      e.stopPropagation();
+      aiAnalyzeTopic(e.target.dataset.subject, e.target.dataset.topic);
+    }
+  });
+
+  document.getElementById('btnCloseAnalyze').addEventListener('click', function () {
+    document.getElementById('analyzeOverlay').style.display = 'none';
+  });
+  document.getElementById('btnCopyAnalyze').addEventListener('click', function () {
+    var text = document.getElementById('analyzeContent').innerText;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(function () { showToast('已复制', 'success'); });
+    }
+  });
+  document.getElementById('analyzeOverlay').addEventListener('click', function (e) {
+    if (e.target === this) this.style.display = 'none';
+  });
 
   /* 初始化 */
   (async function initApp() {
