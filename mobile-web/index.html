@@ -1235,12 +1235,14 @@
       });
     });
   };
-  IMG_DB.get = function (key) {
+  IMG_DB.get = function (key, timeoutMs) {
+    timeoutMs = timeoutMs || 5000;
     return IMG_DB.open().then(function (db) {
-      return new Promise(function (resolve) {
+      return new Promise(function (resolve, reject) {
+        var timer = setTimeout(function () { reject(new Error('timeout')); }, timeoutMs);
         var req = db.transaction('images', 'readonly').objectStore('images').get(key);
-        req.onsuccess = function () { resolve(req.result); };
-        req.onerror = function () { resolve(null); };
+        req.onsuccess = function () { clearTimeout(timer); resolve(req.result); };
+        req.onerror = function (e) { clearTimeout(timer); reject(e.target.error); };
       });
     });
   };
@@ -1567,8 +1569,7 @@
         if (!items) continue;
         for (var i = 0; i < items.length; i++) {
           if (items[i].imageId) {
-            var base64 = await IMG_DB.get(items[i].imageId);
-            items[i].image = base64 || null;
+            try { var base64 = await IMG_DB.get(items[i].imageId); items[i].image = base64 || null; } catch (e) { items[i].image = null; }
             delete items[i].imageId;
           }
         }
@@ -1761,25 +1762,43 @@
         if (textEl) textEl.classList.toggle('show');
       });
     });
-    // 异步加载 IndexedDB 中的图片缩略图
+    // 异步加载 IndexedDB 中的图片缩略图（带重试，移动端适配）
     knowledgeTree.querySelectorAll('.lazy-thumb-placeholder').forEach(function (placeholder) {
       var imageId = placeholder.getAttribute('data-image-id');
       if (!imageId) return;
-      IMG_DB.get(imageId).then(function (base64) {
-        if (base64) {
-          var img = document.createElement('img');
-          img.src = base64;
-          img.style.width = '100%';
-          img.style.maxHeight = '120px';
-          img.style.objectFit = 'contain';
-          img.style.borderRadius = '4px';
-          img.style.border = '1px solid var(--green-200)';
-          img.style.cursor = 'pointer';
-          placeholder.parentNode.replaceChild(img, placeholder);
-        } else {
-          placeholder.innerHTML = '<span style="padding:12px;color:#94a3b8;">图片加载失败</span>';
-        }
-      });
+
+      function tryLoad(retriesLeft) {
+        IMG_DB.get(imageId).then(function (base64) {
+          if (base64) {
+            var img = document.createElement('img');
+            img.src = base64;
+            img.style.width = '100%';
+            img.style.maxHeight = '120px';
+            img.style.objectFit = 'contain';
+            img.style.borderRadius = '4px';
+            img.style.border = '1px solid var(--green-200)';
+            img.style.cursor = 'pointer';
+            if (placeholder.parentNode) {
+              placeholder.parentNode.replaceChild(img, placeholder);
+            }
+          } else if (retriesLeft > 0) {
+            setTimeout(function () { tryLoad(retriesLeft - 1); }, 300);
+          } else {
+            if (placeholder && placeholder.parentNode) {
+              placeholder.innerHTML = '<span style="padding:12px;color:#94a3b8;">图片加载失败</span>';
+            }
+          }
+        }).catch(function () {
+          if (retriesLeft > 0) {
+            setTimeout(function () { tryLoad(retriesLeft - 1); }, 300);
+          } else {
+            if (placeholder && placeholder.parentNode) {
+              placeholder.innerHTML = '<span style="padding:12px;color:#94a3b8;">图片加载失败</span>';
+            }
+          }
+        });
+      }
+      tryLoad(3);
     });
     // 图片缩略图点击放大（事件委托，兼容动态创建的 img）
     knowledgeTree.querySelectorAll('.record-image-thumb').forEach(function (thumb) {
@@ -2423,6 +2442,9 @@
 
   /* 初始化 */
   (async function initApp() {
+    if (!window.indexedDB) {
+      console.warn('KnowLeaf: IndexedDB 不可用，图片功能将受限');
+    }
     var data = loadData();
     await migrateLegacyImages(data);
     renderKnowledgeTree();
