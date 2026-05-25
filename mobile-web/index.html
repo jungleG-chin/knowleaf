@@ -1850,15 +1850,17 @@
       var img = new Image();
       img.onload = function () {
         var canvas = document.createElement('canvas');
-        var maxW = 600, maxH = 400;
+        var maxW = 1200, maxH = 800;
         var w = img.width, h = img.height;
         if (w > maxW) { h = h * (maxW / w); w = maxW; }
         if (h > maxH) { w = w * (maxH / h); h = maxH; }
-        canvas.width = w;
-        canvas.height = h;
+        canvas.width = Math.round(w);
+        canvas.height = Math.round(h);
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.4));
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
       img.onerror = function () { resolve(null); };
       img.src = base64;
