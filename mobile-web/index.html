@@ -3254,6 +3254,15 @@
 
   function getTodayStr() { return new Date().toISOString().slice(0, 10); }
 
+  function getTodayReviewState() {
+    var today = getTodayStr();
+    var saved = localStorage.getItem('knowleaf_review_state_' + today);
+    return saved ? JSON.parse(saved) : { total: 0, done: 0, doneIds: [], forgotIds: [] };
+  }
+  function saveTodayReviewState(state) {
+    localStorage.setItem('knowleaf_review_state_' + getTodayStr(), JSON.stringify(state));
+  }
+
   function loadDailyStreak() {
     var lastDate = localStorage.getItem('knowleaf_review_last_date') || '';
     var streak = parseInt(localStorage.getItem('knowleaf_review_streak') || '0', 10);
@@ -3272,17 +3281,44 @@
 
   function loadReviewSession() {
     var data = loadData();
-    var due = getDueReviews(data);
+    var allDue = getDueReviews(data);
     var limit = getDailyLimit();
-    for (var i = due.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = due[i]; due[i] = due[j]; due[j] = tmp;
+
+    var state = getTodayReviewState();
+
+    // ★ 首次计算 totalTarget 后固化到 state，之后不再重算
+    if (!state.total || state.total <= 0) {
+      state.total = Math.min(limit, allDue.length);
+      saveTodayReviewState(state);
     }
-    reviewSession.queue = due.slice(0, limit);
-    reviewSession.done = 0;
+
+    reviewSession.done = state.done || 0;
+    reviewSession.totalTarget = state.total;
     reviewSession.streak = loadDailyStreak();
     reviewSession.currentEntry = null;
     reviewSession.currentIndex = -1;
+
+    // 过滤掉今天已经"记得"的条目
+    var remainingDue = allDue.filter(function(entry) {
+      var id = entry.subject + '|' + entry.topic + '|' + entry.index;
+      return (state.doneIds || []).indexOf(id) === -1;
+    });
+
+    // 收集今天"忘记"的条目
+    var forgotEntries = allDue.filter(function(entry) {
+      var id = entry.subject + '|' + entry.topic + '|' + entry.index;
+      return (state.forgotIds || []).indexOf(id) !== -1;
+    });
+
+    // 打乱未完成的
+    for (var i = remainingDue.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = remainingDue[i]; remainingDue[i] = remainingDue[j]; remainingDue[j] = tmp;
+    }
+
+    reviewSession.queue = remainingDue.concat(forgotEntries);
+    reviewSession.todayDoneIds = state.doneIds || [];
+    reviewSession.todayForgotIds = state.forgotIds || [];
   }
 
   function renderReviewList() {
@@ -3296,7 +3332,7 @@
     }
     reviewEmpty.style.display = 'none';
     reviewComplete.style.display = 'none';
-    reviewProgressFill.style.width = ((reviewSession.done / reviewSession.queue.length) * 100) + '%';
+    reviewProgressFill.style.width = ((reviewSession.done / Math.max(1, reviewSession.totalTarget)) * 100) + '%';
 
     var html = '';
     for (var i = 0; i < reviewSession.queue.length; i++) {
@@ -3304,15 +3340,15 @@
       var rec = entry.item;
       var summary = rec.summary || rec.text || entry.topic;
       var excerpt = summary.length > 60 ? summary.substring(0, 60) + '...' : summary;
-      var isDone = entry._done;
+      var isForgot = (reviewSession.todayForgotIds || []).indexOf(entry.subject + '|' + entry.topic + '|' + entry.index) !== -1;
 
-      html += '<div class="review-wiki-card" data-review-index="' + i + '"' + (isDone ? ' style="opacity:0.5;"' : '') + '>';
+      html += '<div class="review-wiki-card" data-review-index="' + i + '" style="' + (isForgot ? 'border-left:3px solid #f59e0b;' : '') + '">';
       html += '<span class="wiki-subject-tag" style="background:' + getSubjectColor(entry.subject) + ';">' + escHtml(entry.subject) + '</span>';
       html += '<div class="wiki-title">' + escHtml(entry.topic) + '</div>';
       html += '<div class="wiki-excerpt">' + escHtml(excerpt) + '</div>';
       html += '<div class="wiki-meta">';
-      if (isDone) {
-        html += '<span style="color:' + (entry._correct ? '#16a34a' : '#dc2626') + ';">' + (entry._correct ? '✅' : '❌') + '</span>';
+      if (isForgot) {
+        html += '<span style="color:#f59e0b;">🔁 需重记</span><span class="meta-dot">·</span>';
       }
       html += '<span>' + (rec.reviewCount || 0) + ' 次复习</span>';
       html += '<span class="meta-dot">·</span>';
@@ -3350,20 +3386,33 @@
     if (!reviewSession.currentEntry) return;
     var entry = reviewSession.currentEntry;
     var idx = reviewSession.currentIndex;
-    if (correct) {
-      reviewSession.queue[idx]._correct = true;
-    } else {
-      reviewSession.queue[idx]._correct = false;
-    }
-    reviewSession.queue[idx]._done = true;
-    reviewSession.done++;
+    var entryId = entry.subject + '|' + entry.topic + '|' + entry.index;
+    var state = getTodayReviewState();
 
-    applyReviewResult(entry.subject, entry.topic, entry.index, correct);
+    if (correct) {
+      // ✅ 记得 → 标记完成 + 从队列删除
+      if ((state.doneIds || []).indexOf(entryId) === -1) {
+        state.doneIds.push(entryId);
+      }
+      reviewSession.done++;
+      state.done = reviewSession.done; // ★ 同步到 state
+      applyReviewResult(entry.subject, entry.topic, entry.index, true);
+      reviewSession.queue.splice(idx, 1);
+    } else {
+      // ❌ 忘记 → 保留在队列，标记为忘记过
+      if ((state.forgotIds || []).indexOf(entryId) === -1) {
+        state.forgotIds.push(entryId);
+      }
+      applyReviewResult(entry.subject, entry.topic, entry.index, false);
+    }
+    saveTodayReviewState(state);
+    reviewSession.todayDoneIds = state.doneIds;
+    reviewSession.todayForgotIds = state.forgotIds;
 
     closeWikiAnswer();
     renderReviewList();
 
-    if (reviewSession.done >= reviewSession.queue.length) {
+    if (reviewSession.done >= reviewSession.totalTarget) {
       showReviewComplete();
     }
   }
@@ -3372,9 +3421,7 @@
     reviewWikiList.innerHTML = '';
     reviewProgressFill.style.width = '100%';
     reviewComplete.style.display = 'flex';
-    var correct = 0;
-    reviewSession.queue.forEach(function (e) { if (e._correct) correct++; });
-    reviewCompleteStats.textContent = '今日复习 ' + reviewSession.queue.length + ' 条，答对 ' + correct + ' / ' + reviewSession.queue.length;
+    reviewCompleteStats.textContent = '今日复习 ' + reviewSession.totalTarget + ' 条，完成 ' + reviewSession.done + ' / ' + reviewSession.totalTarget;
     saveDailyStreak(reviewSession.streak + 1);
     reviewSession.streak = reviewSession.streak + 1;
     updateReviewStats();
@@ -3383,7 +3430,8 @@
   function updateReviewStats() {
     var data = loadData();
     var stats = getReviewStats(data);
-    reviewDueCount.textContent = stats.due;
+    var totalTarget = reviewSession.totalTarget || stats.due;
+    reviewDueCount.textContent = totalTarget;
     reviewMasteredCount.textContent = stats.mastered;
     reviewDoneToday.textContent = reviewSession.done;
     reviewStreak.textContent = reviewSession.streak;
@@ -3398,7 +3446,9 @@
   // 进入复习板块时自动加载
   var reviewTab = document.querySelector('[data-panel="reviewPanel"]');
   reviewTab.addEventListener('click', function () {
-    loadReviewSession();
+    if (reviewSession.totalTarget === undefined || reviewSession.totalTarget === 0) {
+      loadReviewSession();
+    }
     renderReviewList();
   });
 
