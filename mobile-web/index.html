@@ -895,9 +895,24 @@
 
   /* 知识树图片缩略图 */
   .record-image-thumb {
-    margin: 4px 0;
+    margin: 6px 0;
     border-radius: 6px;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+  }
+  .record-image-thumb img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: 120px;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid var(--green-200);
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-user-drag: none;
   }
 
   /* 全屏图片查看器 */
@@ -910,29 +925,33 @@
     align-items: center;
     justify-content: center;
     animation: fadeIn .2s ease;
+    -webkit-overflow-scrolling: touch;
   }
   .image-viewer-overlay img {
     max-width: 95vw;
-    max-height: 90vh;
+    max-height: 85vh;
     object-fit: contain;
     border-radius: 8px;
+    -webkit-user-drag: none;
+    touch-action: pinch-zoom;
   }
   .image-viewer-close {
     position: absolute;
     top: 16px;
     right: 16px;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     border: none;
     background: rgba(255,255,255,.2);
     color: #fff;
-    font-size: 20px;
+    font-size: 22px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* ===== 合并弹窗 ===== */
@@ -1562,7 +1581,7 @@
           html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
           if (rec.image) {
             html += '<div class="record-image-thumb" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">';
-            html += '<img src="' + rec.image + '" style="max-width:100%;max-height:120px;object-fit:contain;border-radius:4px;border:1px solid var(--green-200);cursor:pointer;">';
+            html += '<img src="' + rec.image + '" onerror="this.style.display=\'none\';this.parentNode.innerHTML+=\'<div style=padding:12px;text-align:center;color:#94a3b8;font-size:13px;>图片加载失败</div>\'">';
             html += '</div>';
           }
           html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
@@ -1619,8 +1638,7 @@
     });
     // 图片缩略图点击放大
     knowledgeTree.querySelectorAll('.record-image-thumb img').forEach(function (el) {
-      el.addEventListener('click', function (e) {
-        e.stopPropagation();
+      function openViewer() {
         var overlay = document.createElement('div');
         overlay.className = 'image-viewer-overlay';
         var img = document.createElement('img');
@@ -1633,6 +1651,15 @@
         overlay.appendChild(img);
         overlay.appendChild(closeBtn);
         document.body.appendChild(overlay);
+      }
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openViewer.call(this);
+      });
+      el.addEventListener('touchend', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        openViewer.call(this);
       });
     });
     knowledgeTree.querySelectorAll('.btn-edit').forEach(function (el) {
