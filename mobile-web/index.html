@@ -1388,14 +1388,6 @@
       <span class="stat-num" id="reviewDoneToday">0</span>
       <span class="stat-label">已完成</span>
     </div>
-    <div class="review-stat-card">
-      <span class="stat-num" id="reviewStreak">0</span>
-      <span class="stat-label">连续天数</span>
-    </div>
-    <div class="review-stat-card">
-      <span class="stat-num" id="reviewMasteredCount">0</span>
-      <span class="stat-label">已掌握</span>
-    </div>
   </div>
   <div class="review-progress-bar-full"><div class="fill" id="reviewProgressFill" style="width:0%"></div></div>
 
@@ -3329,9 +3321,9 @@
 
     var state = getTodayReviewState();
 
-    // ★ 首次计算 totalTarget 后固化到 state，之后不再重算
+    // ★ totalTarget = 每日复习量上限，首次固化
     if (!state.total || state.total <= 0) {
-      state.total = Math.min(limit, allDue.length);
+      state.total = limit;
       saveTodayReviewState(state);
     }
 
@@ -3368,9 +3360,16 @@
     updateReviewStats();
     if (reviewSession.queue.length === 0) {
       reviewWikiList.innerHTML = '';
-      reviewEmpty.style.display = 'flex';
-      reviewComplete.style.display = 'none';
-      reviewProgressFill.style.width = '0%';
+      reviewEmpty.style.display = 'none';
+      reviewComplete.style.display = 'flex';
+      reviewProgressFill.style.width = '100%';
+      if (reviewSession.done < reviewSession.totalTarget) {
+        reviewCompleteStats.textContent = '今日复习 ' + reviewSession.done + ' / ' + reviewSession.totalTarget + '（待复习条目不足）';
+      } else {
+        reviewCompleteStats.textContent = '今日复习 ' + reviewSession.totalTarget + ' 条，完成 ' + reviewSession.done + ' / ' + reviewSession.totalTarget;
+      }
+      saveDailyStreak(reviewSession.streak + 1);
+      reviewSession.streak = reviewSession.streak + 1;
       return;
     }
     reviewEmpty.style.display = 'none';
@@ -3473,11 +3472,10 @@
   function updateReviewStats() {
     var data = loadData();
     var stats = getReviewStats(data);
-    var totalTarget = reviewSession.totalTarget || stats.due;
-    reviewDueCount.textContent = totalTarget;
-    reviewMasteredCount.textContent = stats.mastered;
-    reviewDoneToday.textContent = reviewSession.done;
-    reviewStreak.textContent = reviewSession.streak;
+    var T = reviewSession.totalTarget || getDailyLimit();
+    var dueNum = Math.max(0, T - reviewSession.done);
+    reviewDueCount.textContent = dueNum + ' / ' + T;
+    reviewDoneToday.textContent = reviewSession.done + ' / ' + T;
   }
 
   /* 事件绑定 */
