@@ -26,7 +26,7 @@
     background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 40%, #f8fafc 100%);
     min-height: 100vh;
     color: #1e293b;
-    padding-bottom: 24px;
+    padding-bottom: 80px;
   }
 
   /* ===== 顶部标题栏 ===== */
@@ -578,6 +578,62 @@
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--green-300); border-radius: 10px; }
+
+  /* ===== 三板块系统 ===== */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ===== 底部导航栏 ===== */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 500;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid var(--green-200);
+    padding: 6px 0;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  .nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: inherit;
+    min-height: 48px;
+    min-width: 64px;
+    border-radius: 8px;
+    -webkit-appearance: none;
+    transition: color .15s;
+  }
+  .nav-tab .nav-icon { font-size: 20px; }
+  .nav-tab.active {
+    color: var(--green-600);
+    font-weight: 700;
+  }
+  .nav-tab.active::after {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 3px;
+    background: var(--green-500);
+    border-radius: 2px;
+    margin-top: 2px;
+  }
+  .nav-tab:active { background: var(--green-50); }
 </style>
 </head>
 <body>
@@ -587,6 +643,9 @@
   <div class="logo"><span>🍃</span>KnowLeaf 知叶</div>
   <button class="btn-settings" id="btnSettings">⚙ 设置</button>
 </div>
+
+<!-- ===== 📖 学习板块 ===== -->
+<div class="panel active" id="learnPanel">
 
 <!-- 区域1：输入区 -->
 <div class="input-section">
@@ -697,10 +756,56 @@
   </div>
 </div>
 
+</div><!-- /learnPanel -->
+
+<!-- ===== 📝 复习板块 ===== -->
+<div class="panel" id="reviewPanel">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#a8cfb0;text-align:center;padding:24px;">
+    <div style="font-size:48px;margin-bottom:12px;">📝</div>
+    <p style="font-size:16px;font-weight:600;color:var(--green-700);margin-bottom:8px;">复习板块</p>
+    <p style="font-size:13px;">艾宾浩斯遗忘曲线复习系统即将上线</p>
+  </div>
+</div>
+
+<!-- ===== 👤 我的板块 ===== -->
+<div class="panel" id="myPanel">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#a8cfb0;text-align:center;padding:24px;">
+    <div style="font-size:48px;margin-bottom:12px;">👤</div>
+    <p style="font-size:16px;font-weight:600;color:var(--green-700);margin-bottom:8px;">我的</p>
+    <p style="font-size:13px;">用户设置与数据管理即将上线</p>
+  </div>
+</div>
+
+<!-- 底部导航栏 -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="nav-tab active" data-panel="learnPanel">
+    <span class="nav-icon">📖</span>学习
+  </button>
+  <button class="nav-tab" data-panel="reviewPanel">
+    <span class="nav-icon">📝</span>复习
+  </button>
+  <button class="nav-tab" data-panel="myPanel">
+    <span class="nav-icon">👤</span>我的
+  </button>
+</nav>
+
 <input type="file" id="importFileInput" accept=".json">
 
 <script>
 (function () {
+  /* ===== 底部导航 Tab 切换 ===== */
+  var navTabs = document.querySelectorAll('.nav-tab');
+  var panels = document.querySelectorAll('.panel');
+  navTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var panelId = this.getAttribute('data-panel');
+      navTabs.forEach(function (t) { t.classList.remove('active'); });
+      this.classList.add('active');
+      panels.forEach(function (p) { p.classList.remove('active'); });
+      document.getElementById(panelId).classList.add('active');
+    });
+  });
+
   const LS_KEY   = 'knowleaf_deepseek_apikey';
   const URL_KEY  = 'knowleaf_api_url';
   const MODEL_KEY = 'knowleaf_model';
