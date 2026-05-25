@@ -1461,37 +1461,32 @@
 
   /* 知识库数据 */
   function loadData() {
-    try { var raw = localStorage.getItem(DATA_KEY); var data = raw ? JSON.parse(raw) : {}; data = migrateData(data); migrateOldImages(data); return data; }
+    try { var raw = localStorage.getItem(DATA_KEY); var data = raw ? JSON.parse(raw) : {}; return migrateData(data); }
     catch (e) { return {}; }
   }
-  // 将旧 record.image (base64) 迁移到 IndexedDB
-  var _imageMigrationDone = false;
-  function migrateOldImages(data) {
-    if (_imageMigrationDone) return;
-    _imageMigrationDone = true;
-    var pending = [];
+
+  // 将旧 record.image (base64) 迁移到 IndexedDB（仅在初始化时调用一次）
+  async function migrateLegacyImages(data) {
+    var migrated = false;
     for (var s in data) {
       for (var t in data[s]) {
         var items = data[s][t].items;
         if (!items) continue;
         for (var i = 0; i < items.length; i++) {
           if (items[i].image && !items[i].imageId) {
-            var imageId = s + '|' + t + '|' + (items[i].createdAt ? new Date(items[i].createdAt).getTime() : Date.now()) + '_' + i;
-            pending.push({ imageId: imageId, base64: items[i].image, item: items[i] });
+            var imageId = s + '|' + t + '|' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
+            try {
+              await IMG_DB.put(imageId, items[i].image);
+              items[i].imageId = imageId;
+              delete items[i].image;
+              migrated = true;
+            } catch (e) {}
           }
         }
       }
     }
-    if (pending.length > 0) {
-      Promise.all(pending.map(function (p) {
-        return IMG_DB.put(p.imageId, p.base64).then(function () {
-          p.item.imageId = p.imageId;
-          delete p.item.image;
-        });
-      })).then(function () {
-        saveData(data);
-        renderKnowledgeTree();
-      });
+    if (migrated) {
+      saveData(data);
     }
   }
   function saveData(data) { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
@@ -1705,9 +1700,13 @@
           html += '<li class="record-item"><div class="record-body">';
           html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
           if (rec.imageId || rec.image) {
-            var imgId = rec.imageId || '';
-            html += '<div class="record-image-thumb" data-image-id="' + escHtml(imgId) + '">';
-            html += '<img class="lazy-thumb" data-image-id="' + escHtml(imgId) + '" src="" alt="加载中..." onerror="this.style.display=\'none\';this.parentNode.innerHTML+=\'<div style=padding:12px;text-align:center;color:#94a3b8;font-size:13px;>图片加载失败</div>\'">';
+            html += '<div class="record-image-thumb">';
+            if (rec.imageId) {
+              html += '<div class="lazy-thumb-placeholder" data-image-id="' + escHtml(rec.imageId) + '" style="width:100%;height:80px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;">⏳ 加载中...</div>';
+            } else if (rec.image) {
+              // 兜底：旧 base64 直接显示（迁移完成前）
+              html += '<img src="' + escHtml(rec.image) + '" style="width:100%;max-height:120px;object-fit:contain;border-radius:4px;border:1px solid var(--green-200);" onerror="this.style.display=\'none\';this.parentNode.innerHTML+=\'<div style=padding:12px;text-align:center;color:#94a3b8;font-size:13px;>图片加载失败</div>\'">';
+            }
             html += '</div>';
           }
           html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
@@ -1763,23 +1762,32 @@
       });
     });
     // 异步加载 IndexedDB 中的图片缩略图
-    knowledgeTree.querySelectorAll('.lazy-thumb').forEach(function (el) {
-      var imageId = el.getAttribute('data-image-id');
+    knowledgeTree.querySelectorAll('.lazy-thumb-placeholder').forEach(function (placeholder) {
+      var imageId = placeholder.getAttribute('data-image-id');
       if (!imageId) return;
       IMG_DB.get(imageId).then(function (base64) {
         if (base64) {
-          el.src = base64;
-          el.alt = '';
+          var img = document.createElement('img');
+          img.src = base64;
+          img.style.width = '100%';
+          img.style.maxHeight = '120px';
+          img.style.objectFit = 'contain';
+          img.style.borderRadius = '4px';
+          img.style.border = '1px solid var(--green-200)';
+          img.style.cursor = 'pointer';
+          placeholder.parentNode.replaceChild(img, placeholder);
+        } else {
+          placeholder.innerHTML = '<span style="padding:12px;color:#94a3b8;">图片加载失败</span>';
         }
       });
     });
-    // 图片缩略图点击放大
-    knowledgeTree.querySelectorAll('.lazy-thumb').forEach(function (el) {
-      function openViewer() {
+    // 图片缩略图点击放大（事件委托，兼容动态创建的 img）
+    knowledgeTree.querySelectorAll('.record-image-thumb').forEach(function (thumb) {
+      function showViewerOverlay(src) {
         var overlay = document.createElement('div');
         overlay.className = 'image-viewer-overlay';
         var img = document.createElement('img');
-        img.src = this.src;
+        img.src = src;
         var closeBtn = document.createElement('button');
         closeBtn.className = 'image-viewer-close';
         closeBtn.textContent = '✕';
@@ -1789,14 +1797,21 @@
         overlay.appendChild(closeBtn);
         document.body.appendChild(overlay);
       }
-      el.addEventListener('click', function (e) {
-        e.stopPropagation();
-        openViewer.call(this);
+      thumb.addEventListener('click', function (e) {
+        var target = e.target;
+        // 找到被点击的 img 元素
+        if (target.tagName === 'IMG' && target.src) {
+          e.stopPropagation();
+          showViewerOverlay(target.src);
+        }
       });
-      el.addEventListener('touchend', function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        openViewer.call(this);
+      thumb.addEventListener('touchend', function (e) {
+        var target = e.target;
+        if (target.tagName === 'IMG' && target.src) {
+          e.stopPropagation();
+          e.preventDefault();
+          showViewerOverlay(target.src);
+        }
       });
     });
     knowledgeTree.querySelectorAll('.btn-edit').forEach(function (el) {
@@ -2407,8 +2422,12 @@
   // 如果初始就在复习板块（通过 URL hash 等），暂不处理，默认进入学习板块
 
   /* 初始化 */
-  renderKnowledgeTree();
-  refreshMindmap();
+  (async function initApp() {
+    var data = loadData();
+    await migrateLegacyImages(data);
+    renderKnowledgeTree();
+    refreshMindmap();
+  })();
 })();
 </script>
 
