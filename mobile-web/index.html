@@ -1188,6 +1188,38 @@
   .detail-nav:disabled { opacity: 0.35; cursor: default; }
   .detail-nav:not(:disabled):active { background: var(--green-50); }
   .detail-pos { font-size: 12px; color: #94a3b8; }
+
+  /* ===== 复习板块 - 维基百科风格 ===== */
+  .review-wiki-header { padding: 20px 16px 12px; text-align: center; }
+  .review-wiki-header h2 { font-size: 22px; font-weight: 700; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .review-wiki-header .wiki-subtitle { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+  .review-stats-row { display: flex; justify-content: center; gap: 24px; padding: 12px 16px 16px; flex-wrap: wrap; }
+  .review-stat-card { text-align: center; min-width: 70px; }
+  .review-stat-card .stat-num { font-size: 28px; font-weight: 700; color: var(--green-600); display: block; line-height: 1.2; }
+  .review-stat-card .stat-label { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .review-progress-bar-full { margin: 0 16px 16px; height: 4px; background: var(--green-100); border-radius: 2px; overflow: hidden; }
+  .review-progress-bar-full .fill { height: 100%; background: var(--green-500); border-radius: 2px; transition: width .3s ease; }
+  .review-wiki-list { padding: 0 12px; }
+  .review-wiki-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 12px; cursor: pointer; transition: box-shadow .15s, transform .15s; }
+  .review-wiki-card:active { box-shadow: 0 2px 12px rgba(0,0,0,.06); transform: scale(.98); }
+  .review-wiki-card .wiki-subject-tag { display: inline-block; font-size: 10px; font-weight: 600; color: #fff; padding: 3px 8px; border-radius: 4px; margin-bottom: 8px; letter-spacing: .5px; }
+  .review-wiki-card .wiki-title { font-size: 17px; font-weight: 600; color: #1e293b; margin-bottom: 6px; line-height: 1.4; }
+  .review-wiki-card .wiki-excerpt { font-size: 13px; color: #64748b; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; }
+  .review-wiki-card .wiki-meta { font-size: 11px; color: #94a3b8; margin-top: 8px; display: flex; gap: 12px; align-items: center; }
+  .review-wiki-card .wiki-meta .meta-dot { color: #cbd5e1; }
+
+  /* 展开答案弹窗 */
+  .wiki-answer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); z-index: 1000; display: flex; align-items: center; justify-content: center; animation: fadeIn .2s ease; }
+  .wiki-answer-card { width: 90%; max-width: 500px; max-height: 80vh; background: #fff; border-radius: 16px; padding: 24px; overflow-y: auto; -webkit-overflow-scrolling: touch; animation: slideUp .3s ease; }
+  .wiki-answer-card .wiki-answer-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+  .wiki-answer-card .wiki-answer-subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 16px; }
+  .wiki-answer-card .wiki-answer-content { font-size: 15px; color: #334155; line-height: 1.8; white-space: pre-wrap; margin-bottom: 20px; }
+  .wiki-answer-actions { display: flex; gap: 10px; }
+  .wiki-answer-actions button { flex: 1; padding: 14px 0; border-radius: 10px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+  .wiki-answer-actions button:active { opacity: .85; }
+  .btn-wiki-forgot { background: #fee2e2; color: #dc2626; }
+  .btn-wiki-remember { background: #dcfce7; color: #16a34a; }
+  .btn-wiki-close { display: block; width: 100%; margin-top: 8px; padding: 12px 0; background: none; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; color: #64748b; cursor: pointer; font-family: inherit; }
 </style>
 </head>
 <body>
@@ -1252,11 +1284,9 @@
         <button class="btn-sm danger" id="btnClearAll">🗑</button>
       </div>
     </div>
-    <div class="search-bar">
-      <input class="search-input" id="searchInput" placeholder="🔍 搜索学科、知识点或内容..." autocomplete="off">
-      <select id="subjectFilter" title="按学科筛选知识列表" aria-label="筛选学科" style="padding:8px 12px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:40px;max-width:140px;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;flex-shrink:0;">
-        <option value="">📂 学科筛选</option>
-      </select>
+    <div class="search-bar" style="position:relative;">
+      <input class="search-input" id="searchInput" placeholder="搜索学科、知识点或内容..." autocomplete="off">
+      <button class="btn-search" id="btnSearch" style="padding:8px 16px;border:none;border-radius:20px;background:var(--green-500);color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;min-height:40px;font-family:inherit;flex-shrink:0;">搜索</button>
     </div>
     <div class="knowledge-tree" id="knowledgeTree">
       <div class="empty-state">还没有知识条目，开始输入吧</div>
@@ -1343,40 +1373,61 @@
   </div>
 </div>
 
-<!-- ===== 📝 复习板块 ===== -->
+<!-- ===== 📝 复习板块（维基百科风格） ===== -->
 <div class="panel" id="reviewPanel">
-  <div class="review-stats-bar" id="reviewStatsBar">
-    <div class="stat-item"><span class="stat-num" id="reviewDueCount">0</span>今日待复习</div>
-    <div class="stat-item"><span class="stat-num" id="reviewMasteredCount">0</span>已掌握</div>
-    <div class="stat-item"><span class="stat-num" id="reviewStreak">0</span>连续正确</div>
+  <div class="review-wiki-header">
+    <h2>📖 今日复习</h2>
+    <div class="wiki-subtitle" id="reviewDateLabel"></div>
   </div>
-  <div class="review-progress"><div class="review-progress-bar" id="reviewProgressBar" style="width:0%"></div></div>
+  <div class="review-stats-row">
+    <div class="review-stat-card">
+      <span class="stat-num" id="reviewDueCount">0</span>
+      <span class="stat-label">待复习</span>
+    </div>
+    <div class="review-stat-card">
+      <span class="stat-num" id="reviewDoneToday">0</span>
+      <span class="stat-label">已完成</span>
+    </div>
+    <div class="review-stat-card">
+      <span class="stat-num" id="reviewStreak">0</span>
+      <span class="stat-label">连续天数</span>
+    </div>
+    <div class="review-stat-card">
+      <span class="stat-num" id="reviewMasteredCount">0</span>
+      <span class="stat-label">已掌握</span>
+    </div>
+  </div>
+  <div class="review-progress-bar-full"><div class="fill" id="reviewProgressFill" style="width:0%"></div></div>
+
+  <!-- 空状态 -->
   <div class="review-empty" id="reviewEmpty">
     <div class="empty-icon">🎉</div>
     <p style="font-size:15px;font-weight:600;color:var(--green-700);">暂无待复习内容</p>
-    <p style="font-size:13px;">去学习板块添加知识后再来吧</p>
+    <p style="font-size:13px;">去学习板块添加更多知识吧</p>
   </div>
-  <div class="review-complete" id="reviewComplete">
+
+  <!-- 完成状态 -->
+  <div class="review-complete" id="reviewComplete" style="display:none;">
     <div class="complete-icon">🎉</div>
-    <h3>今日复习完成</h3>
-    <p>明天见！</p>
+    <h3>今日复习完成！</h3>
     <p style="font-size:13px;" id="reviewCompleteStats"></p>
   </div>
-  <div class="review-card-area" id="reviewCardArea">
-    <div class="review-card" id="reviewCard">
-      <div class="card-label">知识点</div>
-      <div class="card-subject" id="cardSubject"></div>
-      <div class="card-hint" id="cardHint"></div>
-      <div class="card-answer" id="cardAnswer"></div>
-      <button class="btn-reveal" id="btnReveal">👆 点击显示答案</button>
-      <div class="card-detail-link" id="cardDetailLink" style="display:none;margin-top:10px;text-align:center;">
-        <button class="btn-outline" id="btnViewDetail" style="font-size:13px;color:var(--green-600);">查看知识详情 →</button>
-      </div>
+
+  <!-- 知识卡片列表 -->
+  <div class="review-wiki-list" id="reviewWikiList"></div>
+</div>
+
+<!-- 答案弹窗 -->
+<div class="wiki-answer-overlay" id="wikiAnswerOverlay" style="display:none;">
+  <div class="wiki-answer-card">
+    <div class="wiki-answer-title" id="wikiAnswerTitle"></div>
+    <div class="wiki-answer-subtitle" id="wikiAnswerSubtitle"></div>
+    <div class="wiki-answer-content" id="wikiAnswerContent"></div>
+    <div class="wiki-answer-actions">
+      <button class="btn-wiki-forgot" id="btnWikiForgot">❌ 忘记了</button>
+      <button class="btn-wiki-remember" id="btnWikiRemember">✅ 我记得</button>
     </div>
-  </div>
-  <div class="review-actions" id="reviewActions">
-    <button class="btn-review btn-forgot" id="btnForgot">❌ 忘记了</button>
-    <button class="btn-review btn-remember" id="btnRemember">✅ 我记得</button>
+    <button class="btn-wiki-close" id="btnWikiClose">关闭</button>
   </div>
 </div>
 
@@ -1661,7 +1712,12 @@
     return EBBINGHAUS_INTERVALS[correctCount];
   }
 
-  function applyReviewResult(item, correct) {
+  function applyReviewResult(subject, topic, itemIndex, correct) {
+    var data = loadData();
+    if (!data[subject] || !data[subject][topic]) return;
+    var items = data[subject][topic].items;
+    if (!items || !items[itemIndex]) return;
+    var item = items[itemIndex];
     item.reviewCount = (item.reviewCount || 0) + 1;
     if (correct) {
       item.correctCount = (item.correctCount || 0) + 1;
@@ -1680,6 +1736,7 @@
     var next = new Date();
     next.setDate(next.getDate() + item.interval);
     item.nextReview = next.toISOString();
+    saveData(data);
   }
 
   /* 获得到期复习的条目 */
@@ -2256,23 +2313,9 @@
     return escaped;
   }
 
-  function populateSubjectFilter() {
-    var sel = document.getElementById('subjectFilter');
-    if (!sel) return;
-    var data = loadData();
-    var subjects = Object.keys(data);
-    var options = '<option value="">📂 学科筛选</option>';
-    subjects.forEach(function (s) {
-      var selected = currentSubjectFilter === s ? ' selected' : '';
-      options += '<option value="' + escHtml(s) + '"' + selected + '>' + escHtml(s) + '</option>';
-    });
-    sel.innerHTML = options;
-  }
-
   /* 渲染知识库 */
   function renderKnowledgeTree() {
     var data = loadData();
-    populateSubjectFilter();
     var keywords = getSearchKeywords();
     var subjects = Object.keys(data);
     var totalCount = 0, anyVisible = false;
@@ -2290,14 +2333,54 @@
       knowledgeTree.innerHTML = '<div class="empty-state">还没有知识条目，开始输入吧</div>';
       return;
     }
-    if (!anyVisible && (currentFilter || currentSubjectFilter)) {
-      var emptyMsg = currentFilter ? '没有匹配 "' + escHtml(currentFilter) + '" 的知识' : '该学科暂无知识';
-      knowledgeTree.innerHTML = '<div class="no-search-result">' + emptyMsg + '</div>';
+    if (!anyVisible && currentFilter) {
+      knowledgeTree.innerHTML = '<div class="no-search-result">没有匹配 "' + escHtml(currentFilter) + '" 的知识</div>';
       return;
     }
 
     var html = '';
-    subjects.forEach(function (subj) {
+    var isSearching = !!(currentFilter && currentFilter.trim() !== '');
+
+    if (isSearching) {
+      // 搜索模式：扁平结果列表
+      var searchResults = [];
+      subjects.forEach(function (subj) {
+        Object.keys(data[subj]).forEach(function (top) {
+          var items = data[subj][top].items || [];
+          items.forEach(function (rec, idx) {
+            if (matchesFilter(subj, top, rec)) {
+              searchResults.push({ subject: subj, topic: top, rec: rec, idx: idx });
+            }
+          });
+        });
+      });
+
+      if (searchResults.length === 0) {
+        knowledgeTree.innerHTML = '<div class="no-search-result">没有匹配 "' + escHtml(currentFilter) + '" 的知识</div>';
+        knowledgeCount.textContent = '0 条';
+        return;
+      }
+
+      knowledgeCount.textContent = searchResults.length + ' 条（搜索）';
+      html += '<div style="padding:0 4px;">';
+      html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px;">找到 ' + searchResults.length + ' 条匹配结果</div>';
+
+      searchResults.forEach(function (r) {
+        html += '<div class="search-result-item" style="padding:12px;margin-bottom:8px;background:rgba(255,255,255,.6);border-radius:8px;border:1px solid var(--green-100);cursor:pointer;" onclick="openDetailPage(\'' + escJs(r.subject) + '\',\'' + escJs(r.topic) + '\',' + r.idx + ');">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+        html += '<span style="font-size:11px;color:#fff;background:' + getSubjectColor(r.subject) + ';padding:2px 8px;border-radius:4px;font-weight:500;">' + escHtml(r.subject) + '</span>';
+        html += '<span style="font-size:11px;color:var(--green-600);">' + escHtml(r.topic) + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:14px;color:#334155;line-height:1.6;">' + highlightText(r.rec.summary, keywords) + '</div>';
+        if (r.rec.imageId || r.rec.image) {
+          html += '<div style="margin-top:6px;font-size:12px;color:#94a3b8;">📷 含图片</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    } else {
+      // 原有树状渲染
+      subjects.forEach(function (subj) {
       var topics = data[subj];
       var topicKeys = Object.keys(topics);
       var visibleTopics = [];
@@ -2356,6 +2439,7 @@
       });
       html += '</div></div>';
     });
+    } // end if (isSearching) else
     knowledgeTree.innerHTML = html;
     bindTreeEvents();
 
@@ -2775,18 +2859,23 @@
   searchInput.addEventListener('compositionstart', function () { isComposing = true; });
   searchInput.addEventListener('compositionend', function () {
     isComposing = false;
-    currentFilter = this.value.trim();
-    renderKnowledgeTree();
+    // compositionend 时不自动搜，等用户点按钮
   });
   searchInput.addEventListener('input', function () {
-    if (isComposing) return;
-    currentFilter = this.value.trim();
+    if (isComposing) return; // IME 输入过程中不触发
+  });
+  /* 搜索按钮 */
+  document.getElementById('btnSearch').addEventListener('click', function () {
+    currentFilter = searchInput.value.trim();
     renderKnowledgeTree();
   });
-  var subjectFilterEl = document.getElementById('subjectFilter');
-  if (subjectFilterEl) {
-    subjectFilterEl.addEventListener('change', function () { currentSubjectFilter = this.value; renderKnowledgeTree(); });
-  }
+  /* enter 键搜索 */
+  searchInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      currentFilter = this.value.trim();
+      renderKnowledgeTree();
+    }
+  });
 
   /* 调用 AI API（支持多平台） */
 
@@ -3144,26 +3233,25 @@
     finally { setLoading(false); }
   });
 
-  /* ===== 复习板块 UI ===== */
-  var reviewSession = { queue: [], currentIndex: 0, dailyStreak: 0, todayHadWrong: false, todayCompleted: false };
+  /* ===== 复习板块 UI（维基百科风格） ===== */
+  var reviewSession = { queue: [], done: 0, streak: 0, currentEntry: null, currentIndex: -1 };
 
-  /* DOM 引用 */
-  var reviewCardArea   = document.getElementById('reviewCardArea');
-  var reviewCard       = document.getElementById('reviewCard');
-  var cardSubject      = document.getElementById('cardSubject');
-  var cardHint         = document.getElementById('cardHint');
-  var cardAnswer       = document.getElementById('cardAnswer');
-  var btnReveal        = document.getElementById('btnReveal');
-  var btnForgot        = document.getElementById('btnForgot');
-  var btnRemember      = document.getElementById('btnRemember');
-  var reviewActions    = document.getElementById('reviewActions');
-  var reviewComplete   = document.getElementById('reviewComplete');
-  var reviewEmpty      = document.getElementById('reviewEmpty');
+  /* DOM */
   var reviewDueCount   = document.getElementById('reviewDueCount');
-  var reviewMasteredCount = document.getElementById('reviewMasteredCount');
+  var reviewDoneToday  = document.getElementById('reviewDoneToday');
   var reviewStreak     = document.getElementById('reviewStreak');
-  var reviewProgressBar = document.getElementById('reviewProgressBar');
+  var reviewMasteredCount = document.getElementById('reviewMasteredCount');
+  var reviewProgressFill = document.getElementById('reviewProgressFill');
+  var reviewEmpty      = document.getElementById('reviewEmpty');
+  var reviewComplete   = document.getElementById('reviewComplete');
+  var reviewWikiList   = document.getElementById('reviewWikiList');
   var reviewCompleteStats = document.getElementById('reviewCompleteStats');
+  var wikiAnswerOverlay = document.getElementById('wikiAnswerOverlay');
+  var wikiAnswerTitle  = document.getElementById('wikiAnswerTitle');
+  var wikiAnswerSubtitle = document.getElementById('wikiAnswerSubtitle');
+  var wikiAnswerContent = document.getElementById('wikiAnswerContent');
+
+  document.getElementById('reviewDateLabel').textContent = new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
 
   function getTodayStr() { return new Date().toISOString().slice(0, 10); }
 
@@ -3171,16 +3259,11 @@
     var lastDate = localStorage.getItem('knowleaf_review_last_date') || '';
     var streak = parseInt(localStorage.getItem('knowleaf_review_streak') || '0', 10);
     var today = getTodayStr();
-    if (lastDate === today) {
-      return streak; // 今天已经复习过，保持 streak
-    }
+    if (lastDate === today) return streak;
     var yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    var yesterdayStr = yesterday.toISOString().slice(0, 10);
-    if (lastDate === yesterdayStr) {
-      return streak; // 昨天复习过，保持 streak
-    }
-    return 0; // 中断了
+    if (lastDate === yesterday.toISOString().slice(0, 10)) return streak;
+    return 0;
   }
 
   function saveDailyStreak(streak) {
@@ -3192,18 +3275,112 @@
     var data = loadData();
     var due = getDueReviews(data);
     var limit = getDailyLimit();
-    reviewSession.dailyStreak = loadDailyStreak();
-    reviewSession.todayHadWrong = false;
-    reviewSession.todayCompleted = false;
-    // 打乱并限制数量
     for (var i = due.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = due[i]; due[i] = due[j]; due[j] = tmp;
     }
     reviewSession.queue = due.slice(0, limit);
-    reviewSession.currentIndex = 0;
-    // 标记今天已开始复习
-    localStorage.setItem('knowleaf_review_last_date', getTodayStr());
+    reviewSession.done = 0;
+    reviewSession.streak = loadDailyStreak();
+    reviewSession.currentEntry = null;
+    reviewSession.currentIndex = -1;
+  }
+
+  function renderReviewList() {
+    updateReviewStats();
+    if (reviewSession.queue.length === 0) {
+      reviewWikiList.innerHTML = '';
+      reviewEmpty.style.display = 'flex';
+      reviewComplete.style.display = 'none';
+      reviewProgressFill.style.width = '0%';
+      return;
+    }
+    reviewEmpty.style.display = 'none';
+    reviewComplete.style.display = 'none';
+    reviewProgressFill.style.width = ((reviewSession.done / reviewSession.queue.length) * 100) + '%';
+
+    var html = '';
+    for (var i = 0; i < reviewSession.queue.length; i++) {
+      var entry = reviewSession.queue[i];
+      var rec = entry.item;
+      var summary = rec.summary || rec.text || entry.topic;
+      var excerpt = summary.length > 60 ? summary.substring(0, 60) + '...' : summary;
+      var isDone = entry._done;
+
+      html += '<div class="review-wiki-card" ' + (isDone ? '' : 'onclick="openWikiAnswer(' + i + ')"') + ' style="' + (isDone ? 'opacity:0.5;' : '') + '">';
+      html += '<span class="wiki-subject-tag" style="background:' + getSubjectColor(entry.subject) + ';">' + escHtml(entry.subject) + '</span>';
+      html += '<div class="wiki-title">' + escHtml(entry.topic) + '</div>';
+      html += '<div class="wiki-excerpt">' + escHtml(excerpt) + '</div>';
+      html += '<div class="wiki-meta">';
+      if (isDone) {
+        html += '<span style="color:' + (entry._correct ? '#16a34a' : '#dc2626') + ';">' + (entry._correct ? '✅' : '❌') + '</span>';
+      }
+      html += '<span>' + (rec.reviewCount || 0) + ' 次复习</span>';
+      html += '<span class="meta-dot">·</span>';
+      html += '<span>' + getReviewStatusText(rec.status) + '</span>';
+      html += '</div>';
+      html += '</div>';
+    }
+    reviewWikiList.innerHTML = html;
+  }
+
+  function getReviewStatusText(status) {
+    var map = { learning: '学习中', reviewing: '复习中', mastered: '已掌握' };
+    return map[status] || '学习中';
+  }
+
+  function openWikiAnswer(index) {
+    var entry = reviewSession.queue[index];
+    reviewSession.currentEntry = entry;
+    reviewSession.currentIndex = index;
+    wikiAnswerTitle.textContent = entry.topic;
+    wikiAnswerSubtitle.textContent = entry.subject;
+    var ans = entry.item.summary || '';
+    if (entry.item.text && entry.item.text !== entry.item.summary) {
+      ans += '\n\n' + entry.item.text;
+    }
+    wikiAnswerContent.textContent = ans;
+    wikiAnswerOverlay.style.display = 'flex';
+  }
+  window.openWikiAnswer = openWikiAnswer;
+
+  function closeWikiAnswer() {
+    wikiAnswerOverlay.style.display = 'none';
+    reviewSession.currentEntry = null;
+  }
+
+  function answerReview(correct) {
+    if (!reviewSession.currentEntry) return;
+    var entry = reviewSession.currentEntry;
+    var idx = reviewSession.currentIndex;
+    if (correct) {
+      reviewSession.queue[idx]._correct = true;
+    } else {
+      reviewSession.queue[idx]._correct = false;
+    }
+    reviewSession.queue[idx]._done = true;
+    reviewSession.done++;
+
+    applyReviewResult(entry.subject, entry.topic, entry.index, correct);
+
+    closeWikiAnswer();
+    renderReviewList();
+
+    if (reviewSession.done >= reviewSession.queue.length) {
+      showReviewComplete();
+    }
+  }
+
+  function showReviewComplete() {
+    reviewWikiList.innerHTML = '';
+    reviewProgressFill.style.width = '100%';
+    reviewComplete.style.display = 'flex';
+    var correct = 0;
+    reviewSession.queue.forEach(function (e) { if (e._correct) correct++; });
+    reviewCompleteStats.textContent = '今日复习 ' + reviewSession.queue.length + ' 条，答对 ' + correct + ' / ' + reviewSession.queue.length;
+    saveDailyStreak(reviewSession.streak + 1);
+    reviewSession.streak = reviewSession.streak + 1;
+    updateReviewStats();
   }
 
   function updateReviewStats() {
@@ -3211,131 +3388,22 @@
     var stats = getReviewStats(data);
     reviewDueCount.textContent = stats.due;
     reviewMasteredCount.textContent = stats.mastered;
-    reviewStreak.textContent = reviewSession.dailyStreak;
+    reviewDoneToday.textContent = reviewSession.done;
+    reviewStreak.textContent = reviewSession.streak;
   }
 
-  function showReviewCard() {
-    if (reviewSession.currentIndex >= reviewSession.queue.length) {
-      showReviewComplete();
-      return;
-    }
-    reviewComplete.style.display = 'none';
-    reviewEmpty.style.display = 'none';
-    reviewCardArea.style.display = 'flex';
-    reviewActions.style.display = 'flex';
-    reviewCard.classList.remove('correct-anim', 'wrong-anim');
-    cardAnswer.classList.remove('show');
-    btnReveal.style.display = '';
-    document.getElementById('cardDetailLink').style.display = 'none';
-
-    var entry = reviewSession.queue[reviewSession.currentIndex];
-    reviewSession.currentEntry = entry;
-    var item = entry.item;
-    cardSubject.textContent = entry.subject + ' / ' + entry.topic;
-    cardHint.textContent = '「' + entry.topic + '」是什么？';
-    var answer = item.summary || '';
-    if (item.text && item.text !== item.summary) { answer += '\n\n详细内容：' + item.text; }
-    cardAnswer.textContent = answer;
-
-    var progress = (reviewSession.currentIndex / reviewSession.queue.length) * 100;
-    reviewProgressBar.style.width = progress + '%';
-  }
-
-  function showReviewEmpty() {
-    reviewCardArea.style.display = 'none';
-    reviewActions.style.display = 'none';
-    reviewComplete.style.display = 'none';
-    reviewEmpty.style.display = 'flex';
-    reviewProgressBar.style.width = '0%';
-  }
-
-  function showReviewComplete() {
-    reviewCardArea.style.display = 'none';
-    reviewActions.style.display = 'none';
-    reviewEmpty.style.display = 'none';
-    reviewComplete.style.display = 'flex';
-    reviewProgressBar.style.width = '100%';
-    if (!reviewSession.todayHadWrong) {
-      reviewSession.dailyStreak++;
-      saveDailyStreak(reviewSession.dailyStreak);
-    }
-    reviewSession.todayCompleted = true;
-    var total = reviewSession.queue.length;
-    reviewCompleteStats.textContent = '共复习 ' + total + ' 个知识点，连续正确 ' + reviewSession.dailyStreak + ' 天';
-    updateReviewStats();
-  }
-
-  function startReview() {
-    loadReviewSession();
-    updateReviewStats();
-    if (reviewSession.queue.length === 0) {
-      showReviewEmpty();
-    } else {
-      showReviewCard();
-    }
-  }
-
-  function finishCurrentCard(correct) {
-    var entry = reviewSession.queue[reviewSession.currentIndex];
-    var data = loadData();
-    var items = data[entry.subject][entry.topic].items;
-    var item = items[entry.index];
-    applyReviewResult(item, correct);
-    saveData(data);
-
-    if (correct) {
-      reviewCard.classList.add('correct-anim');
-    } else {
-      reviewCard.classList.add('wrong-anim');
-      reviewSession.todayHadWrong = true;
-      reviewSession.dailyStreak = 0;
-      saveDailyStreak(0);
-    }
-
-    btnForgot.disabled = true;
-    btnRemember.disabled = true;
-
-    setTimeout(function () {
-      btnForgot.disabled = false;
-      btnRemember.disabled = false;
-      reviewSession.currentIndex++;
-      updateReviewStats();
-      showReviewCard();
-    }, 500);
-  }
-
-  btnReveal.addEventListener('click', function () {
-    cardAnswer.classList.add('show');
-    btnReveal.style.display = 'none';
-    document.getElementById('cardDetailLink').style.display = 'block';
-  });
-
-  document.getElementById('btnViewDetail').addEventListener('click', function () {
-    if (!reviewSession.currentEntry) return;
-    var entry = reviewSession.currentEntry;
-    // 切换到学习板块
-    navTabs.forEach(function (t) { t.classList.remove('active'); });
-    panels.forEach(function (p) { p.classList.remove('active'); });
-    document.querySelector('[data-panel="learnPanel"]').classList.add('active');
-    document.getElementById('learnPanel').classList.add('active');
-    highlightRecord = { subject: entry.subject, topic: entry.topic };
-    currentFilter = ''; currentSubjectFilter = '';
-    if (searchInput) searchInput.value = '';
-    renderKnowledgeTree();
-    // 滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-
-  btnRemember.addEventListener('click', function () { finishCurrentCard(true); });
-  btnForgot.addEventListener('click', function () { finishCurrentCard(false); });
+  /* 事件绑定 */
+  document.getElementById('btnWikiForgot').addEventListener('click', function () { answerReview(false); });
+  document.getElementById('btnWikiRemember').addEventListener('click', function () { answerReview(true); });
+  document.getElementById('btnWikiClose').addEventListener('click', closeWikiAnswer);
+  wikiAnswerOverlay.addEventListener('click', function (e) { if (e.target === this) closeWikiAnswer(); });
 
   // 进入复习板块时自动加载
   var reviewTab = document.querySelector('[data-panel="reviewPanel"]');
   reviewTab.addEventListener('click', function () {
-    startReview();
+    loadReviewSession();
+    renderReviewList();
   });
-
-  // 如果初始就在复习板块（通过 URL hash 等），暂不处理，默认进入学习板块
 
   /* ===== 我的板块 UI ===== */
   var myApiKeyEl      = document.getElementById('myApiKey');
@@ -3691,6 +3759,7 @@
     renderDetailPage(rec, subject, topic, idx);
     document.getElementById('detailOverlay').style.display = 'flex';
   }
+  window.openDetailPage = openDetailPage;
 
   function closeDetailPage() {
     document.getElementById('detailOverlay').style.display = 'none';
