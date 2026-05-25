@@ -2366,7 +2366,7 @@
       html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px;">找到 ' + searchResults.length + ' 条匹配结果</div>';
 
       searchResults.forEach(function (r) {
-        html += '<div class="search-result-item" style="padding:12px;margin-bottom:8px;background:rgba(255,255,255,.6);border-radius:8px;border:1px solid var(--green-100);cursor:pointer;" onclick="openDetailPage(\'' + escJs(r.subject) + '\',\'' + escJs(r.topic) + '\',' + r.idx + ');">';
+        html += '<div class="search-result-item" data-subject="' + escHtml(r.subject) + '" data-topic="' + escHtml(r.topic) + '" data-idx="' + r.idx + '" style="padding:12px;margin-bottom:8px;background:rgba(255,255,255,.6);border-radius:8px;border:1px solid var(--green-100);cursor:pointer;">';
         html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
         html += '<span style="font-size:11px;color:#fff;background:' + getSubjectColor(r.subject) + ';padding:2px 8px;border-radius:4px;font-weight:500;">' + escHtml(r.subject) + '</span>';
         html += '<span style="font-size:11px;color:var(--green-600);">' + escHtml(r.topic) + '</span>';
@@ -2417,7 +2417,7 @@
           var rec = item.rec, idx = item.idx;
           var highlightClass = (highlightRecord && highlightRecord.subject === subj && highlightRecord.topic === vt.name) ? ' highlight-flash' : '';
           html += '<li class="record-item' + highlightClass + '"><div class="record-body">';
-          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '" style="cursor:pointer;" onclick="openDetailPage(\'' + escJs(subj) + '\',\'' + escJs(vt.name) + '\',' + idx + ');event.stopPropagation();">' + highlightText(rec.summary, keywords) + '</div>';
+          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '" style="cursor:pointer;">' + highlightText(rec.summary, keywords) + '</div>';
           if (rec.imageId || rec.image) {
             html += '<div class="record-image-thumb">';
             if (rec.imageId) {
@@ -2475,7 +2475,6 @@
   }
 
   function escHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function escJs(str) { return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
 
   function bindTreeEvents() {
     knowledgeTree.querySelectorAll('.subject-toggle').forEach(function (el) {
@@ -3307,7 +3306,7 @@
       var excerpt = summary.length > 60 ? summary.substring(0, 60) + '...' : summary;
       var isDone = entry._done;
 
-      html += '<div class="review-wiki-card" ' + (isDone ? '' : 'onclick="openWikiAnswer(' + i + ')"') + ' style="' + (isDone ? 'opacity:0.5;' : '') + '">';
+      html += '<div class="review-wiki-card" data-review-index="' + i + '"' + (isDone ? ' style="opacity:0.5;"' : '') + '>';
       html += '<span class="wiki-subject-tag" style="background:' + getSubjectColor(entry.subject) + ';">' + escHtml(entry.subject) + '</span>';
       html += '<div class="wiki-title">' + escHtml(entry.topic) + '</div>';
       html += '<div class="wiki-excerpt">' + escHtml(excerpt) + '</div>';
@@ -3342,8 +3341,6 @@
     wikiAnswerContent.textContent = ans;
     wikiAnswerOverlay.style.display = 'flex';
   }
-  window.openWikiAnswer = openWikiAnswer;
-
   function closeWikiAnswer() {
     wikiAnswerOverlay.style.display = 'none';
     reviewSession.currentEntry = null;
@@ -3403,6 +3400,38 @@
   reviewTab.addEventListener('click', function () {
     loadReviewSession();
     renderReviewList();
+  });
+
+  /* 复习卡片点击：事件委托 */
+  reviewWikiList.addEventListener('click', function(e) {
+    var card = e.target.closest('.review-wiki-card');
+    if (!card) return;
+    var index = parseInt(card.getAttribute('data-review-index'));
+    if (isNaN(index)) return;
+    if (reviewSession.queue[index] && reviewSession.queue[index]._done) return;
+    openWikiAnswer(index);
+  });
+
+  /* 知识库点击：事件委托（树状 + 搜索结果） */
+  knowledgeTree.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-subject][data-topic][data-idx]');
+    if (!el) return;
+    var subject = el.getAttribute('data-subject');
+    var topic = el.getAttribute('data-topic');
+    var idx = parseInt(el.getAttribute('data-idx'));
+    if (!subject || !topic || isNaN(idx)) return;
+    openDetailPage(subject, topic, idx);
+  });
+
+  /* 详情页关联知识点击：事件委托 */
+  document.getElementById('detailBody').addEventListener('click', function(e) {
+    var el = e.target.closest('.related-link-item');
+    if (!el) return;
+    var subject = el.getAttribute('data-subject');
+    var topic = el.getAttribute('data-topic');
+    var idx = parseInt(el.getAttribute('data-idx'));
+    if (!subject || !topic || isNaN(idx)) return;
+    openDetailPage(subject, topic, idx);
   });
 
   /* ===== 我的板块 UI ===== */
@@ -3723,7 +3752,7 @@
       related.forEach(function (r) {
         var s = r.rec.summary || r.rec.text || r.topic;
         if (s.length > 30) s = s.substring(0, 30) + '...';
-        html += '<li onclick="openDetailPage(\'' + escJs(subject) + '\',\'' + escJs(r.topic) + '\',' + r.idx + ')" style="cursor:pointer;">';
+        html += '<li class="related-link-item" data-subject="' + escHtml(subject) + '" data-topic="' + escHtml(r.topic) + '" data-idx="' + r.idx + '" style="cursor:pointer;">';
         html += '<span>' + escHtml(s) + '</span>';
         html += '<span style="font-size:11px;color:var(--green-600);background:rgba(255,255,255,.7);padding:2px 8px;border-radius:4px;">' + escHtml(r.topic) + '</span>';
         html += '</li>';
@@ -3759,8 +3788,6 @@
     renderDetailPage(rec, subject, topic, idx);
     document.getElementById('detailOverlay').style.display = 'flex';
   }
-  window.openDetailPage = openDetailPage;
-
   function closeDetailPage() {
     document.getElementById('detailOverlay').style.display = 'none';
   }
