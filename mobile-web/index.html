@@ -170,6 +170,29 @@
     height: 350px;
   }
   .mindmap-body.collapsed { max-height: 0 !important; height: 0; border: none; margin-top: 0; }
+  .mindmap-subject-bar {
+    display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto;
+    font-size: 13px; flex-wrap: nowrap; white-space: nowrap;
+    border-top: 1px solid var(--green-200);
+  }
+  .mindmap-subject-bar .subject-chip {
+    padding: 5px 12px; border-radius: 16px; cursor: pointer;
+    border: 1px solid var(--green-300); background: var(--green-50);
+    color: var(--green-700); font-weight: 500; transition: all .15s;
+    flex-shrink: 0; min-height: 32px; display: flex; align-items: center;
+  }
+  .mindmap-subject-bar .subject-chip:active, .mindmap-subject-bar .subject-chip.active {
+    background: var(--green-500); color: #fff; border-color: var(--green-500);
+  }
+  .mindmap-subject-bar .subject-chip-all {
+    padding: 5px 10px; border-radius: 16px; cursor: pointer;
+    border: 1px solid var(--green-300); background: var(--green-50);
+    color: var(--green-600); font-size: 12px; transition: all .15s;
+    flex-shrink: 0; min-height: 32px; display: flex; align-items: center;
+  }
+  .mindmap-subject-bar .subject-chip-all:active, .mindmap-subject-bar .subject-chip-all.active {
+    background: var(--green-600); color: #fff; border-color: var(--green-600);
+  }
   .mindmap-body .placeholder {
     display: flex;
     flex-direction: column;
@@ -256,6 +279,7 @@
   .search-bar {
     padding: 8px 14px;
     border-bottom: 1px solid var(--green-50);
+    display: flex; gap: 8px; align-items: center;
   }
   .search-input {
     width: 100%;
@@ -382,6 +406,29 @@
     word-break: break-word;
   }
   .record-text.show { display: block; }
+  mark { background: #fde68a; color: #92400e; border-radius: 2px; padding: 0 1px; }
+  .recommendations {
+    margin-top: 8px; padding: 8px;
+    background: var(--green-50);
+    border-radius: 8px; font-size: 13px;
+    border: 1px solid var(--green-200);
+  }
+  .rec-item {
+    padding: 4px 0; cursor: pointer;
+    color: var(--green-600);
+    border-bottom: 1px solid var(--green-100);
+  }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-item:active { color: var(--green-800); }
+  .record-item.highlight-flash {
+    animation: highlightFlash 2s ease;
+    background: var(--green-100);
+    border-radius: 8px;
+  }
+  @keyframes highlightFlash {
+    0% { background: var(--green-200); }
+    100% { background: transparent; }
+  }
   .record-time {
     font-size: 11px;
     color: #c0cfc0;
@@ -1112,6 +1159,7 @@
   <div class="section-toggle collapsed" id="mindmapToggle">
     <span class="arrow">▼</span> 思维导图
   </div>
+  <div id="mindmapSubjectBar" class="mindmap-subject-bar" style="display:none;"></div>
   <div class="mindmap-body collapsed" id="mindmapBody">
     <div class="placeholder" id="mindmapPlaceholder">
       <div class="icon">🧠</div>
@@ -1135,6 +1183,9 @@
     </div>
     <div class="search-bar">
       <input class="search-input" id="searchInput" placeholder="🔍 搜索学科、知识点或内容..." autocomplete="off">
+      <select id="subjectFilter" style="padding:8px 12px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:40px;max-width:140px;-webkit-appearance:none;appearance:none;background-image:url(&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2315853d'><path d='M7 10l5 5 5-5z'/></svg>&quot;);background-repeat:no-repeat;background-position:right 8px center;background-size:18px;flex-shrink:0;">
+        <option value="">全学科</option>
+      </select>
     </div>
     <div class="knowledge-tree" id="knowledgeTree">
       <div class="empty-state">还没有知识条目，开始输入吧</div>
@@ -1231,6 +1282,9 @@
       <div class="card-hint" id="cardHint"></div>
       <div class="card-answer" id="cardAnswer"></div>
       <button class="btn-reveal" id="btnReveal">👆 点击显示答案</button>
+      <div class="card-detail-link" id="cardDetailLink" style="display:none;margin-top:10px;text-align:center;">
+        <button class="btn-outline" id="btnViewDetail" style="font-size:13px;color:var(--green-600);">查看知识详情 →</button>
+      </div>
     </div>
   </div>
   <div class="review-actions" id="reviewActions">
@@ -1310,8 +1364,8 @@
   <div class="my-section">
     <h4>ℹ️ 关于</h4>
     <p style="font-size:13px;color:#64748b;line-height:1.8;">
-      <strong>KnowLeaf 知叶 v1.0</strong><br>
-      AI 驱动的学习笔记工具，支持文本/图片输入、思维导图展示、艾宾浩斯遗忘曲线复习。<br>
+      <strong>KnowLeaf 知叶 v1.1</strong><br>
+      随身智能笔记本 —— 不限学术场景，适用于会议纪要、生活知识、菜谱、旅行攻略等一切个人知识。<br>支持文本/图片输入、思维导图展示、艾宾浩斯遗忘曲线复习。<br>
       <a href="https://github.com/jungleG-chin/knowleaf" target="_blank" rel="noopener" style="color:var(--green-600);">GitHub 仓库</a>
     </p>
   </div>
@@ -1914,7 +1968,7 @@
   }
 
   async function generateMindmapPDF(data) {
-    var md = buildMarkdown(data);
+    var md = buildMarkdown(data, true);
     if (!md || md.trim().length <= '# 我的知识树'.length + 5) return null;
     if (!window.markmap || !window.markmap.Markmap) return null;
     var Markmap = window.markmap.Markmap;
@@ -2051,20 +2105,88 @@
     importFileInput.value = '';
   }
 
+  /* 学科颜色标签 */
+  function getSubjectColor(name) {
+    var colors = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+    var hash = 0;
+    for (var i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  /* 知识关联推荐 */
+  function getRelatedRecommendations(currentSubj, currentTopic) {
+    var data = loadData();
+    var recommendations = [];
+    if (!data[currentSubj]) return recommendations;
+    Object.keys(data[currentSubj]).forEach(function (t) {
+      if (t === currentTopic) return;
+      var items = data[currentSubj][t].items || [];
+      items.forEach(function (rec, idx) {
+        var lastReview = rec.lastReview ? new Date(rec.lastReview) : null;
+        var now = new Date();
+        var daysSince = lastReview ? (now - lastReview) / (1000 * 60 * 60 * 24) : 999;
+        if (daysSince > 3) {
+          recommendations.push({ subj: currentSubj, topic: t, rec: rec, idx: idx, daysSince: daysSince });
+        }
+      });
+    });
+    recommendations.sort(function (a, b) { return b.daysSince - a.daysSince; });
+    return recommendations.slice(0, 3);
+  }
+
   /* 搜索 */
   var currentFilter = '';
-  function matchesFilter(subj, topic, rec) {
-    if (!currentFilter) return true;
+  var currentSubjectFilter = '';
+  var highlightRecord = null;
+
+  function getSearchKeywords() {
+    if (!currentFilter) return [];
     var q = currentFilter.toLowerCase();
-    return subj.toLowerCase().indexOf(q) !== -1
-      || topic.toLowerCase().indexOf(q) !== -1
-      || rec.summary.toLowerCase().indexOf(q) !== -1
-      || rec.text.toLowerCase().indexOf(q) !== -1;
+    var keywords = q.split(/[\s，、；：。（）【】,.!?;:\\"'，。、；：""''（）【】《》]+/).filter(Boolean);
+    if (keywords.length === 0) keywords = [q];
+    return keywords;
+  }
+
+  function matchesFilter(subj, topic, rec) {
+    if (currentSubjectFilter && subj !== currentSubjectFilter) return false;
+    if (!currentFilter) return true;
+    var keywords = getSearchKeywords();
+    if (keywords.length === 0) return true;
+    var haystack = (subj + ' ' + topic + ' ' + (rec.summary||'') + ' ' + (rec.text||'')).toLowerCase();
+    return keywords.every(function(kw) {
+      return haystack.indexOf(kw) !== -1;
+    });
+  }
+
+  function highlightText(text, keywords) {
+    if (!keywords || keywords.length === 0) return escHtml(text);
+    var escaped = escHtml(text);
+    keywords.forEach(function(kw) {
+      if (!kw) return;
+      var regex = new RegExp('(' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+      escaped = escaped.replace(regex, '<mark>$1</mark>');
+    });
+    return escaped;
+  }
+
+  function populateSubjectFilter() {
+    var sel = document.getElementById('subjectFilter');
+    if (!sel) return;
+    var data = loadData();
+    var subjects = Object.keys(data);
+    var options = '<option value="">全学科</option>';
+    subjects.forEach(function (s) {
+      var selected = currentSubjectFilter === s ? ' selected' : '';
+      options += '<option value="' + escHtml(s) + '"' + selected + '>' + escHtml(s) + '</option>';
+    });
+    sel.innerHTML = options;
   }
 
   /* 渲染知识库 */
   function renderKnowledgeTree() {
     var data = loadData();
+    populateSubjectFilter();
+    var keywords = getSearchKeywords();
     var subjects = Object.keys(data);
     var totalCount = 0, anyVisible = false;
     subjects.forEach(function (s) {
@@ -2081,8 +2203,9 @@
       knowledgeTree.innerHTML = '<div class="empty-state">还没有知识条目，开始输入吧</div>';
       return;
     }
-    if (!anyVisible && currentFilter) {
-      knowledgeTree.innerHTML = '<div class="no-search-result">没有匹配 "' + escHtml(currentFilter) + '" 的知识</div>';
+    if (!anyVisible && (currentFilter || currentSubjectFilter)) {
+      var emptyMsg = currentFilter ? '没有匹配 "' + escHtml(currentFilter) + '" 的知识' : '该学科暂无知识';
+      knowledgeTree.innerHTML = '<div class="no-search-result">' + emptyMsg + '</div>';
       return;
     }
 
@@ -2097,32 +2220,34 @@
         topicItems.forEach(function (rec, idx) {
           if (matchesFilter(subj, top, rec)) visibleRecords.push({ rec: rec, idx: idx });
         });
-        if (visibleRecords.length > 0 || !currentFilter) {
-          var recordsToShow = currentFilter ? visibleRecords
+        var isFiltering = !!(currentFilter || currentSubjectFilter);
+        if (visibleRecords.length > 0 || !isFiltering) {
+          var recordsToShow = isFiltering ? visibleRecords
             : topicItems.map(function (r, i) { return { rec: r, idx: i }; });
           visibleTopics.push({ name: top, records: recordsToShow, totalCount: topicItems.length });
         }
       });
-      if (visibleTopics.length === 0 && currentFilter) return;
+      if (visibleTopics.length === 0 && isFiltering) return;
 
       var subjTotal = 0;
       visibleTopics.forEach(function (vt) { subjTotal += vt.totalCount; });
 
       html += '<div class="subject-group">';
-      html += '<div class="subject-toggle" data-subject="' + escHtml(subj) + '">';
-      html += '<span class="arrow">▼</span>' + escHtml(subj);
+      html += '<div class="subject-toggle" data-subject="' + escHtml(subj) + '" style="border-left: 4px solid ' + getSubjectColor(subj) + ';">';
+      html += '<span class="arrow">▼</span>' + highlightText(subj, keywords);
       html += '<span class="badge">' + subjTotal + '</span></div>';
       html += '<div class="topic-children" data-subject-children="' + escHtml(subj) + '">';
       visibleTopics.forEach(function (vt) {
         var isChild = !!(data[subj][vt.name] && data[subj][vt.name].parentTopic);
         html += '<div class="topic-group' + (isChild ? ' topic-child' : '') + '" style="' + (isChild ? 'padding-left:18px;' : '') + '">';
         html += '<div class="topic-toggle" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '">';
-        html += '<span class="arrow">▼</span>' + escHtml(vt.name) + ' (' + vt.totalCount + ')</div>';
+        html += '<span class="arrow">▼</span>' + highlightText(vt.name, keywords) + ' (' + vt.totalCount + ')</div>';
         html += '<div class="record-list" data-topic-children="' + escHtml(subj) + '|' + escHtml(vt.name) + '">';
         vt.records.forEach(function (item) {
           var rec = item.rec, idx = item.idx;
-          html += '<li class="record-item"><div class="record-body">';
-          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
+          var highlightClass = (highlightRecord && highlightRecord.subject === subj && highlightRecord.topic === vt.name) ? ' highlight-flash' : '';
+          html += '<li class="record-item' + highlightClass + '"><div class="record-body">';
+          html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + highlightText(rec.summary, keywords) + '</div>';
           if (rec.imageId || rec.image) {
             html += '<div class="record-image-thumb">';
             if (rec.imageId) {
@@ -2133,7 +2258,7 @@
             }
             html += '</div>';
           }
-          html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
+          html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + highlightText(rec.text, keywords) + '</div>';
           html += '<div class="record-time">' + escHtml(rec.time) + '</div></div>';
           html += '<button class="btn-edit" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✏️</button>';
           html += '<button class="btn-ai-analyze btn-outline" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" style="font-size:11px;padding:4px 8px;min-height:30px;">🤖</button>';
@@ -2146,6 +2271,36 @@
     });
     knowledgeTree.innerHTML = html;
     bindTreeEvents();
+
+    // 高亮记录自动展开
+    if (highlightRecord) {
+      setTimeout(function () {
+        // 展开对应学科
+        var subjToggle = knowledgeTree.querySelector('.subject-toggle[data-subject="' + escHtml(highlightRecord.subject) + '"]');
+        if (subjToggle) {
+          var subjChildren = knowledgeTree.querySelector('[data-subject-children="' + escHtml(highlightRecord.subject) + '"]');
+          if (subjChildren && subjChildren.classList.contains('collapsed')) {
+            subjChildren.classList.remove('collapsed');
+            subjChildren.style.maxHeight = subjChildren.scrollHeight + 'px';
+            subjToggle.classList.remove('collapsed');
+          }
+          // 展开对应话题
+          var topicToggle = knowledgeTree.querySelector('.topic-toggle[data-subject="' + escHtml(highlightRecord.subject) + '"][data-topic="' + escHtml(highlightRecord.topic) + '"]');
+          if (topicToggle) {
+            var topicChildren = knowledgeTree.querySelector('[data-topic-children="' + escHtml(highlightRecord.subject) + '|' + escHtml(highlightRecord.topic) + '"]');
+            if (topicChildren && topicChildren.classList.contains('collapsed')) {
+              topicChildren.classList.remove('collapsed');
+              topicChildren.style.maxHeight = topicChildren.scrollHeight + 'px';
+              topicToggle.classList.remove('collapsed');
+            }
+          }
+        }
+        // 滚动到高亮元素
+        var flashEl = knowledgeTree.querySelector('.record-item.highlight-flash');
+        if (flashEl) flashEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlightRecord = null;
+      }, 100);
+    }
   }
 
   function escHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2183,7 +2338,39 @@
       el.addEventListener('click', function () {
         var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic'), idx = this.getAttribute('data-idx');
         var textEl = document.getElementById('recText-' + escHtml(subj) + '-' + escHtml(top) + '-' + idx);
-        if (textEl) textEl.classList.toggle('show');
+        if (textEl) {
+          var isNowVisible = !textEl.classList.contains('show');
+          textEl.classList.toggle('show');
+          // 推荐栏
+          var recContainer = textEl.parentNode.querySelector('.recommendations');
+          if (isNowVisible) {
+            if (recContainer) recContainer.remove();
+            var recs = getRelatedRecommendations(subj, top);
+            if (recs.length > 0) {
+              var recHtml = '<div class="recommendations"><div style="font-weight:600;color:var(--green-700);margin-bottom:4px;">📖 推荐复习</div>';
+              recs.forEach(function (r) {
+                recHtml += '<div class="rec-item" data-subject="' + escHtml(r.subj) + '" data-topic="' + escHtml(r.topic) + '" data-idx="' + r.idx + '">→ ' + escHtml(r.topic) + '：' + escHtml(r.rec.summary) + '</div>';
+              });
+              recHtml += '</div>';
+              textEl.insertAdjacentHTML('afterend', recHtml);
+              // 推荐项点击：跳转到对应记录的展开
+              setTimeout(function () {
+                textEl.parentNode.querySelectorAll('.rec-item').forEach(function (recEl) {
+                  recEl.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var rSubj = this.getAttribute('data-subject');
+                    var rTopic = this.getAttribute('data-topic');
+                    // 标记高亮记录
+                    highlightRecord = { subject: rSubj, topic: rTopic };
+                    renderKnowledgeTree();
+                  });
+                });
+              }, 50);
+            }
+          } else {
+            if (recContainer) recContainer.remove();
+          }
+        }
       });
     });
     // 异步加载 IndexedDB 中的图片缩略图（带重试，移动端适配）
@@ -2274,66 +2461,92 @@
   }
 
   /* Markmap */
-  function buildMarkdown(data) {
+  function buildMarkdown(data, expandSubject) {
     var lines = ['# 我的知识树'];
     var subjects = Object.keys(data);
     if (subjects.length === 0) return '';
+    // expandSubject: true=展开全部, null=折叠全部, string=只展开该学科
+    var expandAll = (expandSubject === true);
     subjects.forEach(function (s) {
       lines.push('## ' + s);
-      var topics = Object.keys(data[s]);
-      // 分离顶层和子话题
-      var topLevel = [];
-      var children = [];
-      topics.forEach(function (t) {
-        if (data[s][t].parentTopic) {
-          children.push(t);
-        } else {
-          topLevel.push(t);
-        }
-      });
-      // 渲染顶层话题
-      topLevel.forEach(function (t) {
-        lines.push('### ' + t);
-        var items = data[s][t].items || [];
-        items.forEach(function (r) {
-          lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
-        });
-        // 渲染该话题的子话题（####）
-        children.forEach(function (ct) {
-          if (data[s][ct].parentTopic === t) {
-            lines.push('#### ' + ct);
-            var citems = data[s][ct].items || [];
-            citems.forEach(function (r) {
-              lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
-            });
+      if (!expandAll && expandSubject !== s) {
+        // 折叠模式：只列出话题名，不展开具体条目
+        var topics = Object.keys(data[s]);
+        topics.forEach(function (t) {
+          if (!data[s][t].parentTopic) {
+            lines.push('- ' + t);
           }
         });
-      });
-      // 孤立子节点降级为顶层
-      children.forEach(function (ct) {
-        var p = data[s][ct].parentTopic;
-        if (!data[s][p]) {
-          lines.push('### ' + ct);
-          var items = data[s][ct].items || [];
-          items.forEach(function (r) { lines.push('- ' + r.summary); });
-        }
-      });
+      } else {
+        // 展开模式：完整内容
+        var topics = Object.keys(data[s]);
+        var topLevel = [];
+        var children = [];
+        topics.forEach(function (t) {
+          if (data[s][t].parentTopic) {
+            children.push(t);
+          } else {
+            topLevel.push(t);
+          }
+        });
+        topLevel.forEach(function (t) {
+          lines.push('### ' + t);
+          var items = data[s][t].items || [];
+          items.forEach(function (r) {
+            lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
+          });
+          children.forEach(function (ct) {
+            if (data[s][ct].parentTopic === t) {
+              lines.push('#### ' + ct);
+              var citems = data[s][ct].items || [];
+              citems.forEach(function (r) {
+                lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
+              });
+            }
+          });
+        });
+        // 孤立子节点降级为顶层
+        children.forEach(function (ct) {
+          var p = data[s][ct].parentTopic;
+          if (!data[s][p]) {
+            lines.push('### ' + ct);
+            var items = data[s][ct].items || [];
+            items.forEach(function (r) { lines.push('- ' + r.summary); });
+          }
+        });
+      }
     });
     return lines.join('\n');
   }
 
   var mmInstance = null;
+  var currentMindmapSubject = null;
+
+  function renderMindmapSubjectBar() {
+    var data = loadData();
+    var subjects = Object.keys(data);
+    var bar = document.getElementById('mindmapSubjectBar');
+    if (!bar) return;
+    if (subjects.length === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    var html = '<span class="subject-chip-all' + (currentMindmapSubject === null ? ' active' : '') + '" data-subject="">全部</span>';
+    subjects.forEach(function (s) {
+      html += '<span class="subject-chip' + (currentMindmapSubject === s ? ' active' : '') + '" data-subject="' + escHtml(s) + '">' + escHtml(s) + '</span>';
+    });
+    bar.innerHTML = html;
+  }
 
   async function refreshMindmap() {
     var data = loadData();
     var hasData = Object.keys(data).length > 0;
+    renderMindmapSubjectBar();
     if (!hasData) {
       mindmapBody.classList.remove('has-data');
       if (mmInstance) { mmInstance.destroy(); mmInstance = null; }
       return;
     }
     mindmapBody.classList.add('has-data');
-    var md = buildMarkdown(data);
+    var md = buildMarkdown(data, currentMindmapSubject);
     if (!window.markmap) { setTimeout(refreshMindmap, 200); return; }
     var { Markmap, Transformer } = window.markmap;
     var transformer = new Transformer();
@@ -2357,6 +2570,15 @@
       mindmapBody.classList.add('collapsed');
       mindmapToggle.classList.add('collapsed');
     }
+  });
+
+  /* 思维导图学科折叠切换 */
+  document.getElementById('mindmapSubjectBar').addEventListener('click', function (e) {
+    var chip = e.target.closest('.subject-chip, .subject-chip-all');
+    if (!chip) return;
+    var subject = chip.getAttribute('data-subject') || null;
+    currentMindmapSubject = subject;
+    refreshMindmap();
   });
 
   /* API Key 弹窗（首次使用） */
@@ -2447,6 +2669,10 @@
 
   /* 搜索 */
   searchInput.addEventListener('input', function () { currentFilter = this.value.trim(); renderKnowledgeTree(); });
+  var subjectFilterEl = document.getElementById('subjectFilter');
+  if (subjectFilterEl) {
+    subjectFilterEl.addEventListener('change', function () { currentSubjectFilter = this.value; renderKnowledgeTree(); });
+  }
 
   /* 调用 AI API（支持多平台） */
 
@@ -2784,7 +3010,7 @@
           if (checkTopicMerge(item.subject, item.topic)) {
             await showMergeDialog(item.subject, item.topic, item.summary, savedText, itemImage, item.parentTopic || null);
           } else {
-            await addKnowledge(savedText || item.summary, item.subject, item.topic, item.summary, itemImage, item.parentTopic || null);
+            await addKnowledge(savedText, item.subject, item.topic, item.summary, itemImage, item.parentTopic || null);
           }
         }
 
@@ -2886,12 +3112,16 @@
     reviewCard.classList.remove('correct-anim', 'wrong-anim');
     cardAnswer.classList.remove('show');
     btnReveal.style.display = '';
+    document.getElementById('cardDetailLink').style.display = 'none';
 
     var entry = reviewSession.queue[reviewSession.currentIndex];
+    reviewSession.currentEntry = entry;
     var item = entry.item;
     cardSubject.textContent = entry.subject + ' / ' + entry.topic;
     cardHint.textContent = '「' + entry.topic + '」是什么？';
-    cardAnswer.textContent = item.summary + '\n\n' + item.text;
+    var answer = item.summary || '';
+    if (item.text && item.text !== item.summary) { answer += '\n\n详细内容：' + item.text; }
+    cardAnswer.textContent = answer;
 
     var progress = (reviewSession.currentIndex / reviewSession.queue.length) * 100;
     reviewProgressBar.style.width = progress + '%';
@@ -2963,6 +3193,23 @@
   btnReveal.addEventListener('click', function () {
     cardAnswer.classList.add('show');
     btnReveal.style.display = 'none';
+    document.getElementById('cardDetailLink').style.display = 'block';
+  });
+
+  document.getElementById('btnViewDetail').addEventListener('click', function () {
+    if (!reviewSession.currentEntry) return;
+    var entry = reviewSession.currentEntry;
+    // 切换到学习板块
+    navTabs.forEach(function (t) { t.classList.remove('active'); });
+    panels.forEach(function (p) { p.classList.remove('active'); });
+    document.querySelector('[data-panel="learnPanel"]').classList.add('active');
+    document.getElementById('learnPanel').classList.add('active');
+    highlightRecord = { subject: entry.subject, topic: entry.topic };
+    currentFilter = ''; currentSubjectFilter = '';
+    if (searchInput) searchInput.value = '';
+    renderKnowledgeTree();
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   btnRemember.addEventListener('click', function () { finishCurrentCard(true); });
