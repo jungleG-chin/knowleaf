@@ -810,6 +810,117 @@
   const URL_KEY  = 'knowleaf_api_url';
   const MODEL_KEY = 'knowleaf_model';
   const DATA_KEY = 'knowleaf_data';
+  const REVIEW_CONFIG_KEY = 'knowleaf_review_config';
+
+  /* 艾宾浩斯遗忘曲线间隔（天） */
+  var EBBINGHAUS_INTERVALS = [1, 2, 4, 7, 15, 30, 90];
+
+  /* 默认复习配置 */
+  function getReviewConfig() {
+    try { var raw = localStorage.getItem(REVIEW_CONFIG_KEY); return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; }
+  }
+  function saveReviewConfig(cfg) { localStorage.setItem(REVIEW_CONFIG_KEY, JSON.stringify(cfg)); }
+  function getDailyLimit() { return getReviewConfig().dailyLimit || 20; }
+  function getAutoArchive() { return getReviewConfig().autoArchive !== false; }
+
+  /* 数据迁移：旧格式数组 → 新格式 { items: [...] } */
+  function migrateData(data) {
+    var migrated = false;
+    Object.keys(data).forEach(function (subj) {
+      Object.keys(data[subj]).forEach(function (topic) {
+        var val = data[subj][topic];
+        if (Array.isArray(val)) {
+          migrated = true;
+          var items = val.map(function (rec) {
+            return {
+              text: rec.text || '',
+              summary: rec.summary || '',
+              time: rec.time || new Date().toLocaleString('zh-CN'),
+              createdAt: rec.createdAt || toISODate(rec.time) || new Date().toISOString(),
+              reviewCount: rec.reviewCount || 0,
+              correctCount: rec.correctCount || 0,
+              lastReviewed: rec.lastReviewed || null,
+              nextReview: rec.nextReview || new Date().toISOString(),
+              interval: rec.interval || 1,
+              status: rec.status || 'learning'
+            };
+          });
+          data[subj][topic] = { items: items };
+        }
+      });
+    });
+    if (migrated) saveData(data);
+    return data;
+  }
+
+  function toISODate(timeStr) {
+    try { return new Date(timeStr).toISOString(); } catch (e) { return null; }
+  }
+
+  /* 艾宾浩斯算法核心 */
+  function getNextInterval(correctCount) {
+    if (correctCount >= EBBINGHAUS_INTERVALS.length) return EBBINGHAUS_INTERVALS[EBBINGHAUS_INTERVALS.length - 1];
+    return EBBINGHAUS_INTERVALS[correctCount];
+  }
+
+  function applyReviewResult(item, correct) {
+    item.reviewCount = (item.reviewCount || 0) + 1;
+    if (correct) {
+      item.correctCount = (item.correctCount || 0) + 1;
+      item.interval = getNextInterval(item.correctCount);
+      if (item.correctCount >= 7) {
+        item.status = 'mastered';
+      } else {
+        item.status = 'reviewing';
+      }
+    } else {
+      item.correctCount = 0;
+      item.interval = 1;
+      item.status = 'learning';
+    }
+    item.lastReviewed = new Date().toISOString();
+    var next = new Date();
+    next.setDate(next.getDate() + item.interval);
+    item.nextReview = next.toISOString();
+  }
+
+  /* 获得到期复习的条目 */
+  function getDueReviews(data) {
+    var due = [];
+    var now = new Date();
+    Object.keys(data).forEach(function (subj) {
+      Object.keys(data[subj]).forEach(function (topic) {
+        var items = data[subj][topic].items;
+        if (!items) return;
+        items.forEach(function (item, idx) {
+          if (item.status === 'mastered') return;
+          if (item.nextReview && new Date(item.nextReview) <= now) {
+            due.push({ subject: subj, topic: topic, index: idx, item: item });
+          }
+        });
+      });
+    });
+    return due;
+  }
+
+  /* 获取复习统计 */
+  function getReviewStats(data) {
+    var total = 0, mastered = 0, reviewedToday = 0;
+    var today = new Date().toISOString().slice(0, 10);
+    Object.keys(data).forEach(function (subj) {
+      Object.keys(data[subj]).forEach(function (topic) {
+        var items = data[subj][topic].items;
+        if (!items) return;
+        items.forEach(function (item) {
+          total++;
+          if (item.status === 'mastered') mastered++;
+          if (item.lastReviewed && item.lastReviewed.slice(0, 10) === today) reviewedToday++;
+        });
+      });
+    });
+    var due = getDueReviews(data).length;
+    return { total: total, mastered: mastered, reviewedToday: reviewedToday, due: due };
+  }
 
   /* 平台预设 */
   var PLATFORM_PRESETS = {
@@ -886,7 +997,7 @@
 
   /* 知识库数据 */
   function loadData() {
-    try { var raw = localStorage.getItem(DATA_KEY); return raw ? JSON.parse(raw) : {}; }
+    try { var raw = localStorage.getItem(DATA_KEY); var data = raw ? JSON.parse(raw) : {}; return migrateData(data); }
     catch (e) { return {}; }
   }
   function saveData(data) { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
@@ -894,8 +1005,16 @@
   function addKnowledge(text, subject, topic, summary) {
     var data = loadData();
     if (!data[subject]) data[subject] = {};
-    if (!data[subject][topic]) data[subject][topic] = [];
-    data[subject][topic].push({ text: text, summary: summary, time: new Date().toLocaleString('zh-CN') });
+    if (!data[subject][topic]) data[subject][topic] = { items: [] };
+    var now = new Date();
+    data[subject][topic].items.push({
+      text: text, summary: summary,
+      time: now.toLocaleString('zh-CN'),
+      createdAt: now.toISOString(),
+      reviewCount: 0, correctCount: 0,
+      lastReviewed: null, nextReview: now.toISOString(),
+      interval: 1, status: 'learning'
+    });
     saveData(data);
     renderKnowledgeTree();
   }
@@ -903,8 +1022,10 @@
   function deleteRecord(subject, topic, index) {
     var data = loadData();
     if (!data[subject] || !data[subject][topic]) return;
-    data[subject][topic].splice(index, 1);
-    if (data[subject][topic].length === 0) delete data[subject][topic];
+    var items = data[subject][topic].items;
+    if (!items) return;
+    items.splice(index, 1);
+    if (items.length === 0) delete data[subject][topic];
     if (Object.keys(data[subject]).length === 0) delete data[subject];
     saveData(data);
     renderKnowledgeTree();
@@ -913,7 +1034,12 @@
 
   function countRecords(data) {
     var c = 0;
-    Object.keys(data).forEach(function (s) { Object.keys(data[s]).forEach(function (t) { c += data[s][t].length; }); });
+    Object.keys(data).forEach(function (s) {
+      Object.keys(data[s]).forEach(function (t) {
+        var v = data[s][t];
+        if (v && v.items) c += v.items.length;
+      });
+    });
     return c;
   }
   function countSubjects(data) { return Object.keys(data).length; }
@@ -950,13 +1076,15 @@
       try {
         var imported = JSON.parse(e.target.result);
         if (typeof imported !== 'object' || Array.isArray(imported)) throw new Error('格式错误');
+        imported = migrateData(imported);
         if (!confirm('即将导入 ' + countRecords(imported) + ' 条记录，与现有数据合并。确定？')) return;
         var existing = loadData();
         Object.keys(imported).forEach(function (s) {
           if (!existing[s]) existing[s] = {};
           Object.keys(imported[s]).forEach(function (t) {
-            if (!existing[s][t]) existing[s][t] = [];
-            existing[s][t] = existing[s][t].concat(imported[s][t]);
+            if (!existing[s][t]) existing[s][t] = { items: [] };
+            var importedItems = imported[s][t].items || [];
+            existing[s][t].items = existing[s][t].items.concat(importedItems);
           });
         });
         saveData(existing);
@@ -987,7 +1115,8 @@
     var totalCount = 0, anyVisible = false;
     subjects.forEach(function (s) {
       Object.keys(data[s]).forEach(function (t) {
-        data[s][t].forEach(function (r) {
+        var items = data[s][t].items || [];
+        items.forEach(function (r) {
           if (matchesFilter(s, t, r)) { totalCount++; anyVisible = true; }
         });
       });
@@ -1009,14 +1138,15 @@
       var topicKeys = Object.keys(topics);
       var visibleTopics = [];
       topicKeys.forEach(function (top) {
+        var topicItems = data[subj][top].items || [];
         var visibleRecords = [];
-        data[subj][top].forEach(function (rec, idx) {
+        topicItems.forEach(function (rec, idx) {
           if (matchesFilter(subj, top, rec)) visibleRecords.push({ rec: rec, idx: idx });
         });
         if (visibleRecords.length > 0 || !currentFilter) {
           var recordsToShow = currentFilter ? visibleRecords
-            : data[subj][top].map(function (r, i) { return { rec: r, idx: i }; });
-          visibleTopics.push({ name: top, records: recordsToShow, totalCount: data[subj][top].length });
+            : topicItems.map(function (r, i) { return { rec: r, idx: i }; });
+          visibleTopics.push({ name: top, records: recordsToShow, totalCount: topicItems.length });
         }
       });
       if (visibleTopics.length === 0 && currentFilter) return;
@@ -1107,7 +1237,8 @@
       lines.push('## ' + s);
       Object.keys(data[s]).forEach(function (t) {
         lines.push('### ' + t);
-        data[s][t].forEach(function (r) { lines.push('- ' + r.summary); });
+        var items = data[s][t].items || [];
+        items.forEach(function (r) { lines.push('- ' + r.summary); });
       });
     });
     return lines.join('\n');
