@@ -1210,6 +1210,60 @@
   const DATA_KEY = 'knowleaf_data';
   const REVIEW_CONFIG_KEY = 'knowleaf_review_config';
 
+  /* ===== IndexedDB 图片存储 ===== */
+  var IMG_DB = { _db: null };
+  IMG_DB.open = function () {
+    return new Promise(function (resolve, reject) {
+      if (IMG_DB._db) return resolve(IMG_DB._db);
+      var req = indexedDB.open('knowleaf_images', 1);
+      req.onupgradeneeded = function (e) {
+        if (!e.target.result.objectStoreNames.contains('images')) {
+          e.target.result.createObjectStore('images');
+        }
+      };
+      req.onsuccess = function (e) { IMG_DB._db = e.target.result; resolve(IMG_DB._db); };
+      req.onerror = function (e) { reject(e.target.error); };
+    });
+  };
+  IMG_DB.put = function (key, base64) {
+    return IMG_DB.open().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').put(base64, key);
+        tx.oncomplete = resolve;
+        tx.onerror = function (e) { reject(e.target.error); };
+      });
+    });
+  };
+  IMG_DB.get = function (key) {
+    return IMG_DB.open().then(function (db) {
+      return new Promise(function (resolve) {
+        var req = db.transaction('images', 'readonly').objectStore('images').get(key);
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { resolve(null); };
+      });
+    });
+  };
+  IMG_DB.del = function (key) {
+    return IMG_DB.open().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').delete(key);
+        tx.oncomplete = resolve;
+        tx.onerror = function (e) { reject(e.target.error); };
+      });
+    });
+  };
+  IMG_DB.clearAll = function () {
+    return IMG_DB.open().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').clear();
+        tx.oncomplete = resolve;
+      });
+    });
+  };
+
   /* 艾宾浩斯遗忘曲线间隔（天） */
   var EBBINGHAUS_INTERVALS = [1, 2, 4, 7, 15, 30, 90];
 
@@ -1407,16 +1461,51 @@
 
   /* 知识库数据 */
   function loadData() {
-    try { var raw = localStorage.getItem(DATA_KEY); var data = raw ? JSON.parse(raw) : {}; return migrateData(data); }
+    try { var raw = localStorage.getItem(DATA_KEY); var data = raw ? JSON.parse(raw) : {}; data = migrateData(data); migrateOldImages(data); return data; }
     catch (e) { return {}; }
+  }
+  // 将旧 record.image (base64) 迁移到 IndexedDB
+  var _imageMigrationDone = false;
+  function migrateOldImages(data) {
+    if (_imageMigrationDone) return;
+    _imageMigrationDone = true;
+    var pending = [];
+    for (var s in data) {
+      for (var t in data[s]) {
+        var items = data[s][t].items;
+        if (!items) continue;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].image && !items[i].imageId) {
+            var imageId = s + '|' + t + '|' + (items[i].createdAt ? new Date(items[i].createdAt).getTime() : Date.now()) + '_' + i;
+            pending.push({ imageId: imageId, base64: items[i].image, item: items[i] });
+          }
+        }
+      }
+    }
+    if (pending.length > 0) {
+      Promise.all(pending.map(function (p) {
+        return IMG_DB.put(p.imageId, p.base64).then(function () {
+          p.item.imageId = p.imageId;
+          delete p.item.image;
+        });
+      })).then(function () {
+        saveData(data);
+        renderKnowledgeTree();
+      });
+    }
   }
   function saveData(data) { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
 
-  function addKnowledge(text, subject, topic, summary, imageBase64) {
+  async function addKnowledge(text, subject, topic, summary, imageBase64) {
     var data = loadData();
     if (!data[subject]) data[subject] = {};
     if (!data[subject][topic]) data[subject][topic] = { items: [] };
     var now = new Date();
+    var imageId = null;
+    if (imageBase64) {
+      imageId = subject + '|' + topic + '|' + now.getTime();
+      await IMG_DB.put(imageId, imageBase64);
+    }
     data[subject][topic].items.push({
       text: text, summary: summary,
       time: now.toLocaleString('zh-CN'),
@@ -1424,17 +1513,21 @@
       reviewCount: 0, correctCount: 0,
       lastReviewed: null, nextReview: now.toISOString(),
       interval: 1, status: 'learning',
-      image: imageBase64 || null
+      imageId: imageId
     });
     saveData(data);
     renderKnowledgeTree();
   }
 
-  function deleteRecord(subject, topic, index) {
+  async function deleteRecord(subject, topic, index) {
     var data = loadData();
     if (!data[subject] || !data[subject][topic]) return;
     var items = data[subject][topic].items;
     if (!items) return;
+    var rec = items[index];
+    if (rec && rec.imageId) {
+      try { await IMG_DB.del(rec.imageId); } catch (e) {}
+    }
     items.splice(index, 1);
     if (items.length === 0) delete data[subject][topic];
     if (Object.keys(data[subject]).length === 0) delete data[subject];
@@ -1460,17 +1553,33 @@
     return c;
   }
 
-  function clearAllData() {
+  async function clearAllData() {
     if (!confirm('确定要清空全部知识数据吗？')) return;
     if (!confirm('此操作不可恢复！再次确认清空？')) return;
     localStorage.removeItem(DATA_KEY);
+    try { await IMG_DB.clearAll(); } catch (e) {}
     renderKnowledgeTree();
     refreshMindmap();
     showToast('已清空全部数据', 'success');
   }
 
-  function exportData() {
-    var json = JSON.stringify(loadData(), null, 2);
+  async function exportData() {
+    var data = loadData();
+    // 从 IndexedDB 取回图片嵌入 JSON
+    for (var s in data) {
+      for (var t in data[s]) {
+        var items = data[s][t].items;
+        if (!items) continue;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].imageId) {
+            var base64 = await IMG_DB.get(items[i].imageId);
+            items[i].image = base64 || null;
+            delete items[i].imageId;
+          }
+        }
+      }
+    }
+    var json = JSON.stringify(data, null, 2);
     var blob = new Blob([json], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -1478,17 +1587,33 @@
     a.download = 'knowleaf_backup_' + new Date().toISOString().slice(0,10) + '.json';
     a.click();
     URL.revokeObjectURL(url);
-    showToast('已导出', 'success');
+    // 重新加载以恢复 imageId
+    location.reload();
   }
 
-  function importData(file) {
+  async function importData(file) {
     var reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = async function (e) {
       try {
         var imported = JSON.parse(e.target.result);
         if (typeof imported !== 'object' || Array.isArray(imported)) throw new Error('格式错误');
         imported = migrateData(imported);
         if (!confirm('即将导入 ' + countRecords(imported) + ' 条记录，与现有数据合并。确定？')) return;
+        // 将 base64 图片写入 IndexedDB，转为 imageId
+        for (var s in imported) {
+          for (var t in imported[s]) {
+            var items = imported[s][t].items;
+            if (!items) continue;
+            for (var i = 0; i < items.length; i++) {
+              if (items[i].image) {
+                var imageId = s + '|' + t + '|' + Date.now() + '_' + i;
+                await IMG_DB.put(imageId, items[i].image);
+                items[i].imageId = imageId;
+                delete items[i].image;
+              }
+            }
+          }
+        }
         var existing = loadData();
         Object.keys(imported).forEach(function (s) {
           if (!existing[s]) existing[s] = {};
@@ -1579,9 +1704,10 @@
           var rec = item.rec, idx = item.idx;
           html += '<li class="record-item"><div class="record-body">';
           html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
-          if (rec.image) {
-            html += '<div class="record-image-thumb" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">';
-            html += '<img src="' + rec.image + '" onerror="this.style.display=\'none\';this.parentNode.innerHTML+=\'<div style=padding:12px;text-align:center;color:#94a3b8;font-size:13px;>图片加载失败</div>\'">';
+          if (rec.imageId || rec.image) {
+            var imgId = rec.imageId || '';
+            html += '<div class="record-image-thumb" data-image-id="' + escHtml(imgId) + '">';
+            html += '<img class="lazy-thumb" data-image-id="' + escHtml(imgId) + '" src="" alt="加载中..." onerror="this.style.display=\'none\';this.parentNode.innerHTML+=\'<div style=padding:12px;text-align:center;color:#94a3b8;font-size:13px;>图片加载失败</div>\'">';
             html += '</div>';
           }
           html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
@@ -1636,8 +1762,19 @@
         if (textEl) textEl.classList.toggle('show');
       });
     });
+    // 异步加载 IndexedDB 中的图片缩略图
+    knowledgeTree.querySelectorAll('.lazy-thumb').forEach(function (el) {
+      var imageId = el.getAttribute('data-image-id');
+      if (!imageId) return;
+      IMG_DB.get(imageId).then(function (base64) {
+        if (base64) {
+          el.src = base64;
+          el.alt = '';
+        }
+      });
+    });
     // 图片缩略图点击放大
-    knowledgeTree.querySelectorAll('.record-image-thumb img').forEach(function (el) {
+    knowledgeTree.querySelectorAll('.lazy-thumb').forEach(function (el) {
       function openViewer() {
         var overlay = document.createElement('div');
         overlay.className = 'image-viewer-overlay';
@@ -1689,7 +1826,7 @@
         lines.push('### ' + t);
         var items = data[s][t].items || [];
         items.forEach(function (r) {
-          lines.push('- ' + r.summary + (r.image ? ' 📷' : ''));
+          lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
         });
       });
     });
@@ -1845,27 +1982,6 @@
   }
 
   /* 压缩图片用于 localStorage 存储（600x400, JPEG 40%，约 20-30KB） */
-  function compressForStorage(base64) {
-    return new Promise(function (resolve) {
-      var img = new Image();
-      img.onload = function () {
-        var canvas = document.createElement('canvas');
-        var maxW = 1200, maxH = 800;
-        var w = img.width, h = img.height;
-        if (w > maxW) { h = h * (maxW / w); w = maxW; }
-        if (h > maxH) { w = w * (maxH / h); h = maxH; }
-        canvas.width = Math.round(w);
-        canvas.height = Math.round(h);
-        var ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
-      };
-      img.onerror = function () { resolve(null); };
-      img.src = base64;
-    });
-  }
 
   /* ===== 构建 multimodal 消息内容 ===== */
   function buildContent(text, imageBase64) {
@@ -1993,14 +2109,18 @@
       var data = loadData();
       if (!data[p.subject][p.topic]) data[p.subject][p.topic] = { items: [] };
       var now = new Date();
-      var storageImg = p.image ? await compressForStorage(p.image) : null;
+      var imageId = null;
+      if (p.image) {
+        imageId = p.subject + '|' + p.topic + '|' + now.getTime();
+        await IMG_DB.put(imageId, p.image);
+      }
       data[p.subject][p.topic].items.push({
         text: p.text, summary: p.summary,
         time: now.toLocaleString('zh-CN'), createdAt: now.toISOString(),
         reviewCount: 0, correctCount: 0,
         lastReviewed: null, nextReview: now.toISOString(),
         interval: 1, status: 'learning',
-        image: storageImg
+        imageId: imageId
       });
       saveData(data);
       renderKnowledgeTree();
@@ -2014,12 +2134,7 @@
     var p = mergeModalOverlay._pending;
     if (p) {
       var newTopic = p.topic + ' (分支)';
-      if (p.image) {
-        var storageImg = await compressForStorage(p.image);
-        addKnowledge(p.text, p.subject, newTopic, p.summary, storageImg);
-      } else {
-        addKnowledge(p.text, p.subject, newTopic, p.summary);
-      }
+      await addKnowledge(p.text, p.subject, newTopic, p.summary, p.image || undefined);
       refreshMindmap();
       showToast('已创建新分支', 'success');
     }
@@ -2104,12 +2219,7 @@
         if (checkTopicMerge(parsed.subject, parsed.topic)) {
           await showMergeDialog(parsed.subject, parsed.topic, parsed.summary, text || parsed.summary, savedImage);
         } else {
-          if (savedImage) {
-            var storageImg = await compressForStorage(savedImage);
-            addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary, storageImg);
-          } else {
-            addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary);
-          }
+          await addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary, savedImage || undefined);
         }
 
         userInput.value = '';
