@@ -634,6 +634,276 @@
     margin-top: 2px;
   }
   .nav-tab:active { background: var(--green-50); }
+
+  /* ===== 复习板块 ===== */
+  .review-stats-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 16px;
+    margin: 12px;
+    background: rgba(255,255,255,.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: #64748b;
+    text-align: center;
+  }
+  .review-stats-bar .stat-item { flex: 1; }
+  .review-stats-bar .stat-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--green-700);
+    display: block;
+  }
+
+  .review-card-area {
+    margin: 0 12px;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .review-card {
+    width: 100%;
+    background: rgba(255,255,255,.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius);
+    padding: 24px 18px;
+    text-align: center;
+    transition: transform .3s, opacity .3s;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .review-card .card-label {
+    font-size: 11px;
+    color: var(--green-500);
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .review-card .card-subject {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 12px;
+  }
+  .review-card .card-hint {
+    font-size: 18px;
+    font-weight: 600;
+    color: #334155;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .review-card .card-answer {
+    display: none;
+    font-size: 15px;
+    color: #64748b;
+    line-height: 1.7;
+    padding: 14px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .review-card .card-answer.show { display: block; }
+  .review-card .btn-reveal {
+    padding: 10px 20px;
+    border: 1px solid var(--green-300);
+    border-radius: 20px;
+    background: rgba(255,255,255,.5);
+    color: var(--green-700);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    min-height: 44px;
+    -webkit-appearance: none;
+  }
+  .review-card .btn-reveal:active { background: var(--green-100); }
+
+  .review-actions {
+    display: flex;
+    gap: 12px;
+    margin: 16px 12px;
+  }
+  .btn-review {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    min-height: 56px;
+    -webkit-appearance: none;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn-review:active { transform: scale(.96); }
+  .btn-forgot {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 2px solid #fecaca;
+  }
+  .btn-forgot:active { background: #fee2e2; }
+  .btn-remember {
+    background: linear-gradient(135deg, var(--green-500), var(--green-600));
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(34,197,94,.3);
+  }
+
+  /* 复习动画 */
+  .review-card.correct-anim {
+    animation: correctPulse .5s ease;
+    border-color: var(--green-400) !important;
+    box-shadow: 0 0 24px rgba(34,197,94,.25);
+  }
+  @keyframes correctPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); background: #f0fdf4; }
+    100% { transform: scale(1); }
+  }
+  .review-card.wrong-anim {
+    animation: wrongShake .4s ease;
+    border-color: #fecaca !important;
+    box-shadow: 0 0 24px rgba(220,38,38,.15);
+  }
+  @keyframes wrongShake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  /* 复习完成 */
+  .review-complete {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+  }
+  .review-complete .complete-icon { font-size: 56px; margin-bottom: 16px; }
+  .review-complete h3 {
+    font-size: 20px;
+    color: var(--green-800);
+    margin-bottom: 8px;
+  }
+  .review-complete p {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 6px;
+  }
+
+  .review-empty {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+    color: #a8cfb0;
+  }
+  .review-empty .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  .review-progress {
+    margin: 0 12px;
+    height: 4px;
+    background: var(--green-100);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .review-progress-bar {
+    height: 100%;
+    background: var(--green-500);
+    border-radius: 2px;
+    transition: width .3s ease;
+  }
+
+  /* ===== 图片上传 ===== */
+  .image-preview-area {
+    margin: 8px 0;
+    position: relative;
+  }
+  .image-preview-area img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid var(--green-200);
+  }
+  .btn-remove-image {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-appearance: none;
+  }
+  .image-upload-btns {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .image-upload-btns .btn-outline {
+    flex: 1;
+    font-size: 12px;
+  }
+
+  /* ===== 编辑弹窗 ===== */
+  .edit-modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-edit {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #c0cfc0;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-appearance: none;
+  }
+  .btn-edit:active { color: var(--green-600); background: var(--green-50); }
+
+  /* ===== 合并弹窗 ===== */
+  .merge-dialog {
+    text-align: center;
+    padding: 8px 0;
+  }
+  .merge-dialog .merge-icon { font-size: 40px; margin-bottom: 12px; }
+  .merge-dialog p { font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 16px; }
+  .merge-dialog .merge-topic-name {
+    font-weight: 700;
+    color: var(--green-700);
+  }
 </style>
 </head>
 <body>
@@ -656,6 +926,14 @@
       placeholder="粘贴或输入你想整理的知识内容...
 例如：TCP 三次握手的过程、React Hooks 原理..."
     ></textarea>
+    <div class="image-preview-area" id="imagePreviewArea" style="display:none;">
+      <img id="imagePreview" src="" alt="预览">
+      <button class="btn-remove-image" id="btnRemoveImage">✕</button>
+    </div>
+    <div class="image-upload-btns">
+      <button class="btn-outline" id="btnPickImage">📷 选择图片</button>
+      <button class="btn-outline" id="btnTakePhoto">📸 拍照</button>
+    </div>
     <button class="btn-analyze" id="btnAnalyze">🔍 分析并生成导图</button>
   </div>
 </div>
@@ -760,10 +1038,35 @@
 
 <!-- ===== 📝 复习板块 ===== -->
 <div class="panel" id="reviewPanel">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:#a8cfb0;text-align:center;padding:24px;">
-    <div style="font-size:48px;margin-bottom:12px;">📝</div>
-    <p style="font-size:16px;font-weight:600;color:var(--green-700);margin-bottom:8px;">复习板块</p>
-    <p style="font-size:13px;">艾宾浩斯遗忘曲线复习系统即将上线</p>
+  <div class="review-stats-bar" id="reviewStatsBar">
+    <div class="stat-item"><span class="stat-num" id="reviewDueCount">0</span>今日待复习</div>
+    <div class="stat-item"><span class="stat-num" id="reviewMasteredCount">0</span>已掌握</div>
+    <div class="stat-item"><span class="stat-num" id="reviewStreak">0</span>连续正确</div>
+  </div>
+  <div class="review-progress"><div class="review-progress-bar" id="reviewProgressBar" style="width:0%"></div></div>
+  <div class="review-empty" id="reviewEmpty">
+    <div class="empty-icon">🎉</div>
+    <p style="font-size:15px;font-weight:600;color:var(--green-700);">暂无待复习内容</p>
+    <p style="font-size:13px;">去学习板块添加知识后再来吧</p>
+  </div>
+  <div class="review-complete" id="reviewComplete">
+    <div class="complete-icon">🎉</div>
+    <h3>今日复习完成</h3>
+    <p>明天见！</p>
+    <p style="font-size:13px;" id="reviewCompleteStats"></p>
+  </div>
+  <div class="review-card-area" id="reviewCardArea">
+    <div class="review-card" id="reviewCard">
+      <div class="card-label">知识点</div>
+      <div class="card-subject" id="cardSubject"></div>
+      <div class="card-hint" id="cardHint"></div>
+      <div class="card-answer" id="cardAnswer"></div>
+      <button class="btn-reveal" id="btnReveal">👆 点击显示答案</button>
+    </div>
+  </div>
+  <div class="review-actions" id="reviewActions">
+    <button class="btn-review btn-forgot" id="btnForgot">❌ 忘记了</button>
+    <button class="btn-review btn-remember" id="btnRemember">✅ 我记得</button>
   </div>
 </div>
 
@@ -788,6 +1091,40 @@
     <span class="nav-icon">👤</span>我的
   </button>
 </nav>
+
+<!-- 知识点编辑弹窗 -->
+<div class="modal-overlay" id="editModalOverlay" style="display:none;">
+  <div class="modal-card">
+    <h3>✏️ 编辑知识点</h3>
+    <label style="font-size:12px;color:#64748b;">学科</label>
+    <input type="text" id="editSubject" placeholder="学科名称" autocomplete="off">
+    <label style="font-size:12px;color:#64748b;">知识点</label>
+    <input type="text" id="editTopic" placeholder="知识点名称" autocomplete="off">
+    <label style="font-size:12px;color:#64748b;">总结</label>
+    <input type="text" id="editSummary" placeholder="一句话总结" autocomplete="off">
+    <label style="font-size:12px;color:#64748b;">原始内容</label>
+    <textarea id="editText" style="width:100%;height:80px;resize:vertical;border:1px solid var(--green-300);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;outline:none;-webkit-appearance:none;" placeholder="原始内容"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCancelEdit">取消</button>
+      <button class="btn-save" id="btnSaveEdit">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 知识点合并弹窗 -->
+<div class="modal-overlay" id="mergeModalOverlay" style="display:none;">
+  <div class="modal-card">
+    <div class="merge-dialog">
+      <div class="merge-icon">🔀</div>
+      <p>检测到已有知识点<br><span class="merge-topic-name" id="mergeTopicName"></span></p>
+      <p style="font-size:13px;color:#94a3b8;">是追加到该知识点下，还是创建新分支？</p>
+      <div class="modal-actions" style="justify-content:center;">
+        <button class="btn-cancel" id="btnMergeNew">创建新分支</button>
+        <button class="btn-save" id="btnMergeAppend">追加到现有</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <input type="file" id="importFileInput" accept=".json">
 
@@ -926,7 +1263,7 @@
   var PLATFORM_PRESETS = {
     deepseek:    { url: 'https://api.deepseek.com/chat/completions',          model: 'deepseek-chat' },
     siliconflow: { url: 'https://api.siliconflow.cn/v1/chat/completions',    model: 'Qwen/Qwen2.5-72B-Instruct' },
-    aliyun:      { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-max' },
+    aliyun:      { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-vl-max' },
     groq:        { url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile' }
   };
 
@@ -967,6 +1304,18 @@
   const settingsPlatform    = document.getElementById('settingsPlatform');
   const settingsApiUrl      = document.getElementById('settingsApiUrl');
   const settingsModel       = document.getElementById('settingsModel');
+  const imagePreviewArea    = document.getElementById('imagePreviewArea');
+  const imagePreview        = document.getElementById('imagePreview');
+  const btnRemoveImage      = document.getElementById('btnRemoveImage');
+  const btnPickImage        = document.getElementById('btnPickImage');
+  const btnTakePhoto        = document.getElementById('btnTakePhoto');
+  const editModalOverlay    = document.getElementById('editModalOverlay');
+  const editSubject         = document.getElementById('editSubject');
+  const editTopic           = document.getElementById('editTopic');
+  const editSummary         = document.getElementById('editSummary');
+  const editText            = document.getElementById('editText');
+  const mergeModalOverlay   = document.getElementById('mergeModalOverlay');
+  const mergeTopicName      = document.getElementById('mergeTopicName');
 
   /* 工具 */
   function getApiKey()  { return localStorage.getItem(LS_KEY); }
@@ -1170,6 +1519,7 @@
           html += '<div class="record-summary" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">' + escHtml(rec.summary) + '</div>';
           html += '<div class="record-text" id="recText-' + escHtml(subj) + '-' + escHtml(vt.name) + '-' + idx + '">' + escHtml(rec.text) + '</div>';
           html += '<div class="record-time">' + escHtml(rec.time) + '</div></div>';
+          html += '<button class="btn-edit" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✏️</button>';
           html += '<button class="btn-delete" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" data-idx="' + idx + '">✕</button>';
           html += '</li>';
         });
@@ -1217,6 +1567,13 @@
         var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic'), idx = this.getAttribute('data-idx');
         var textEl = document.getElementById('recText-' + escHtml(subj) + '-' + escHtml(top) + '-' + idx);
         if (textEl) textEl.classList.toggle('show');
+      });
+    });
+    knowledgeTree.querySelectorAll('.btn-edit').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic'), idx = parseInt(this.getAttribute('data-idx'), 10);
+        openEditModal(subj, top, idx);
       });
     });
     knowledgeTree.querySelectorAll('.btn-delete').forEach(function (el) {
@@ -1375,19 +1732,111 @@
   searchInput.addEventListener('input', function () { currentFilter = this.value.trim(); renderKnowledgeTree(); });
 
   /* 调用 AI API（支持多平台） */
-  async function callDeepSeek(text) {
+
+  /* ===== 图片压缩（Canvas，纯 JS） ===== */
+  function compressImage(base64, maxSizeMB, callback) {
+    var img = new Image();
+    img.onload = function () {
+      var canvas = document.createElement('canvas');
+      var targetBytes = maxSizeMB * 1024 * 1024;
+      var scale = Math.min(1, Math.sqrt(targetBytes / base64.length));
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = base64;
+  }
+
+  /* ===== 构建 multimodal 消息内容 ===== */
+  function buildContent(text, imageBase64) {
+    var parts = [];
+    if (imageBase64) {
+      parts.push({ type: 'image_url', image_url: { url: imageBase64 } });
+    }
+    if (text) {
+      parts.push({ type: 'text', text: text });
+    }
+    return parts;
+  }
+
+  /* ===== 图片上传 ===== */
+  var currentImageBase64 = null;
+
+  function pickImage(capture) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    if (capture) input.setAttribute('capture', 'environment');
+    input.onchange = function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      if (!file.type.match(/image\/(jpeg|png|webp|gif)/)) { showToast('请选择图片文件', 'error'); return; }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var base64 = e.target.result;
+        // 超过 2MB 则压缩
+        if (base64.length > 2 * 1024 * 1024) {
+          compressImage(base64, 2, function (compressed) {
+            currentImageBase64 = compressed;
+            showPreview(compressed);
+            showToast('图片已压缩并就绪', 'success');
+          });
+        } else {
+          currentImageBase64 = base64;
+          showPreview(base64);
+          showToast('图片已就绪', 'success');
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }
+
+  function showPreview(base64) {
+    imagePreview.src = base64;
+    imagePreviewArea.style.display = 'block';
+  }
+
+  function clearImage() {
+    currentImageBase64 = null;
+    imagePreview.src = '';
+    imagePreviewArea.style.display = 'none';
+  }
+
+  btnPickImage.addEventListener('click', function () { pickImage(false); });
+  btnTakePhoto.addEventListener('click', function () { pickImage(true); });
+  btnRemoveImage.addEventListener('click', clearImage);
+
+  /* ===== 统一 API 调用（支持文本 + 图片） ===== */
+  async function callDeepSeek(text, imageBase64) {
     var apiKey = getApiKey();
     if (!apiKey) { apiKey = await showApiKeyModal(); if (!apiKey) return null; }
     var apiUrl = getApiUrl();
     var model  = getModel();
+
+    var hasImage = !!imageBase64;
+    var systemPrompt;
+    if (hasImage && !text) {
+      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点，输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结"}。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。';
+    } else if (hasImage && text) {
+      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary"}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。';
+    } else {
+      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，输出纯JSON格式{subject,topic,summary}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。';
+    }
+
+    var userContent = buildContent(text, imageBase64);
+    if (userContent.length === 0) return null;
+
     var resp = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({
         model: model, temperature: 0.3,
         messages: [
-          { role: 'system', content: '你是一个知识提取器。用户输入一段学习笔记，输出纯JSON格式{subject,topic,summary}。subject=学科名，topic=知识点名，summary=一句话总结。只输出JSON不要markdown标记。' },
-          { role: 'user', content: text }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userContent }
         ]
       })
     });
@@ -1400,19 +1849,139 @@
     return data.choices[0].message.content;
   }
 
-  /* 分析按钮 */
+  /* 知识点合并检查 */
+  function checkTopicMerge(subject, topic) {
+    var data = loadData();
+    return (data[subject] && data[subject][topic]) ? true : false;
+  }
+
+  var mergeResolve = null;
+  function showMergeDialog(subject, topic, summary, text) {
+    return new Promise(function (resolve) {
+      mergeResolve = resolve;
+      mergeTopicName.textContent = topic + '（' + subject + '）';
+      mergeModalOverlay.style.display = 'flex';
+      mergeModalOverlay._pending = { subject: subject, topic: topic, summary: summary, text: text };
+    });
+  }
+  function hideMergeDialog() {
+    mergeModalOverlay.style.display = 'none';
+    if (mergeResolve) { mergeResolve(null); mergeResolve = null; }
+  }
+
+  document.getElementById('btnMergeAppend').addEventListener('click', function () {
+    var p = mergeModalOverlay._pending;
+    if (p) {
+      var data = loadData();
+      if (!data[p.subject][p.topic]) data[p.subject][p.topic] = { items: [] };
+      var now = new Date();
+      data[p.subject][p.topic].items.push({
+        text: p.text, summary: p.summary,
+        time: now.toLocaleString('zh-CN'), createdAt: now.toISOString(),
+        reviewCount: 0, correctCount: 0,
+        lastReviewed: null, nextReview: now.toISOString(),
+        interval: 1, status: 'learning'
+      });
+      saveData(data);
+      renderKnowledgeTree();
+      refreshMindmap();
+      showToast('已追加到现有知识点', 'success');
+    }
+    hideMergeDialog();
+  });
+
+  document.getElementById('btnMergeNew').addEventListener('click', function () {
+    var p = mergeModalOverlay._pending;
+    if (p) {
+      var newTopic = p.topic + ' (分支)';
+      addKnowledge(p.text, p.subject, newTopic, p.summary);
+      showToast('已创建新分支', 'success');
+    }
+    hideMergeDialog();
+  });
+
+  mergeModalOverlay.addEventListener('click', function (e) { if (e.target === mergeModalOverlay) hideMergeDialog(); });
+
+  /* 知识点编辑 */
+  var editPending = null;
+  function openEditModal(subject, topic, index) {
+    var data = loadData();
+    var items = data[subject] && data[subject][topic] ? data[subject][topic].items : null;
+    if (!items || !items[index]) return;
+    var rec = items[index];
+    editPending = { subject: subject, topic: topic, index: index };
+    editSubject.value = subject;
+    editTopic.value = topic;
+    editSummary.value = rec.summary || '';
+    editText.value = rec.text || '';
+    editModalOverlay.style.display = 'flex';
+  }
+  function closeEditModal() {
+    editModalOverlay.style.display = 'none';
+    editPending = null;
+  }
+
+  document.getElementById('btnSaveEdit').addEventListener('click', function () {
+    if (!editPending) return;
+    var newSubject = editSubject.value.trim();
+    var newTopic = editTopic.value.trim();
+    var newSummary = editSummary.value.trim();
+    var newText = editText.value.trim();
+    if (!newSubject || !newTopic || !newSummary) { showToast('学科、知识点、总结不能为空', 'error'); return; }
+
+    var data = loadData();
+    var oldSubj = editPending.subject;
+    var oldTopic = editPending.topic;
+    var oldIdx = editPending.index;
+    var items = data[oldSubj] && data[oldSubj][oldTopic] ? data[oldSubj][oldTopic].items : null;
+    if (!items || !items[oldIdx]) { closeEditModal(); return; }
+    var rec = items[oldIdx];
+    rec.summary = newSummary;
+    rec.text = newText;
+
+    if (oldSubj !== newSubject || oldTopic !== newTopic) {
+      items.splice(oldIdx, 1);
+      if (items.length === 0) delete data[oldSubj][oldTopic];
+      if (Object.keys(data[oldSubj]).length === 0) delete data[oldSubj];
+      if (!data[newSubject]) data[newSubject] = {};
+      if (!data[newSubject][newTopic]) data[newSubject][newTopic] = { items: [] };
+      data[newSubject][newTopic].items.push(rec);
+    }
+
+    saveData(data);
+    renderKnowledgeTree();
+    refreshMindmap();
+    closeEditModal();
+    showToast('知识点已更新', 'success');
+  });
+
+  document.getElementById('btnCancelEdit').addEventListener('click', closeEditModal);
+  editModalOverlay.addEventListener('click', function (e) { if (e.target === editModalOverlay) closeEditModal(); });
+
+  /* ===== 分析按钮 ===== */
   btnAnalyze.addEventListener('click', async function () {
     var text = userInput.value.trim();
-    if (!text) { showToast('请先输入学习内容', 'error'); return; }
+    var hasImage = !!currentImageBase64;
+
+    if (!text && !hasImage) { showToast('请先输入学习内容或上传图片', 'error'); return; }
+
     setLoading(true);
     try {
-      var result = await callDeepSeek(text);
+      var result = await callDeepSeek(text || null, currentImageBase64);
+      clearImage();
+
       try {
         var parsed = JSON.parse(result);
-        addKnowledge(text, parsed.subject, parsed.topic, parsed.summary);
+        if (parsed.error) { showToast(parsed.error, 'error'); setLoading(false); return; }
+
+        if (checkTopicMerge(parsed.subject, parsed.topic)) {
+          await showMergeDialog(parsed.subject, parsed.topic, parsed.summary, text || parsed.summary);
+        } else {
+          addKnowledge(text || parsed.summary, parsed.subject, parsed.topic, parsed.summary);
+        }
+
         userInput.value = '';
         refreshMindmap();
-        // 自动展开思维导图
         if (mindmapBody.classList.contains('collapsed')) {
           mindmapBody.classList.remove('collapsed');
           mindmapToggle.classList.remove('collapsed');
@@ -1422,6 +1991,178 @@
     } catch (err) { showToast(err.message, 'error'); }
     finally { setLoading(false); }
   });
+
+  /* ===== 复习板块 UI ===== */
+  var reviewSession = { queue: [], currentIndex: 0, dailyStreak: 0, todayHadWrong: false, todayCompleted: false };
+
+  /* DOM 引用 */
+  var reviewCardArea   = document.getElementById('reviewCardArea');
+  var reviewCard       = document.getElementById('reviewCard');
+  var cardSubject      = document.getElementById('cardSubject');
+  var cardHint         = document.getElementById('cardHint');
+  var cardAnswer       = document.getElementById('cardAnswer');
+  var btnReveal        = document.getElementById('btnReveal');
+  var btnForgot        = document.getElementById('btnForgot');
+  var btnRemember      = document.getElementById('btnRemember');
+  var reviewActions    = document.getElementById('reviewActions');
+  var reviewComplete   = document.getElementById('reviewComplete');
+  var reviewEmpty      = document.getElementById('reviewEmpty');
+  var reviewDueCount   = document.getElementById('reviewDueCount');
+  var reviewMasteredCount = document.getElementById('reviewMasteredCount');
+  var reviewStreak     = document.getElementById('reviewStreak');
+  var reviewProgressBar = document.getElementById('reviewProgressBar');
+  var reviewCompleteStats = document.getElementById('reviewCompleteStats');
+
+  function getTodayStr() { return new Date().toISOString().slice(0, 10); }
+
+  function loadDailyStreak() {
+    var lastDate = localStorage.getItem('knowleaf_review_last_date') || '';
+    var streak = parseInt(localStorage.getItem('knowleaf_review_streak') || '0', 10);
+    var today = getTodayStr();
+    if (lastDate === today) {
+      return streak; // 今天已经复习过，保持 streak
+    }
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    var yesterdayStr = yesterday.toISOString().slice(0, 10);
+    if (lastDate === yesterdayStr) {
+      return streak; // 昨天复习过，保持 streak
+    }
+    return 0; // 中断了
+  }
+
+  function saveDailyStreak(streak) {
+    localStorage.setItem('knowleaf_review_streak', streak);
+    localStorage.setItem('knowleaf_review_last_date', getTodayStr());
+  }
+
+  function loadReviewSession() {
+    var data = loadData();
+    var due = getDueReviews(data);
+    var limit = getDailyLimit();
+    reviewSession.dailyStreak = loadDailyStreak();
+    reviewSession.todayHadWrong = false;
+    reviewSession.todayCompleted = false;
+    // 打乱并限制数量
+    for (var i = due.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = due[i]; due[i] = due[j]; due[j] = tmp;
+    }
+    reviewSession.queue = due.slice(0, limit);
+    reviewSession.currentIndex = 0;
+    // 标记今天已开始复习
+    localStorage.setItem('knowleaf_review_last_date', getTodayStr());
+  }
+
+  function updateReviewStats() {
+    var data = loadData();
+    var stats = getReviewStats(data);
+    reviewDueCount.textContent = stats.due;
+    reviewMasteredCount.textContent = stats.mastered;
+    reviewStreak.textContent = reviewSession.dailyStreak;
+  }
+
+  function showReviewCard() {
+    if (reviewSession.currentIndex >= reviewSession.queue.length) {
+      showReviewComplete();
+      return;
+    }
+    reviewComplete.style.display = 'none';
+    reviewEmpty.style.display = 'none';
+    reviewCardArea.style.display = 'flex';
+    reviewActions.style.display = 'flex';
+    reviewCard.classList.remove('correct-anim', 'wrong-anim');
+    cardAnswer.classList.remove('show');
+    btnReveal.style.display = '';
+
+    var entry = reviewSession.queue[reviewSession.currentIndex];
+    var item = entry.item;
+    cardSubject.textContent = entry.subject + ' / ' + entry.topic;
+    cardHint.textContent = '「' + entry.topic + '」是什么？';
+    cardAnswer.textContent = item.summary + '\n\n' + item.text;
+
+    var progress = (reviewSession.currentIndex / reviewSession.queue.length) * 100;
+    reviewProgressBar.style.width = progress + '%';
+  }
+
+  function showReviewEmpty() {
+    reviewCardArea.style.display = 'none';
+    reviewActions.style.display = 'none';
+    reviewComplete.style.display = 'none';
+    reviewEmpty.style.display = 'flex';
+    reviewProgressBar.style.width = '0%';
+  }
+
+  function showReviewComplete() {
+    reviewCardArea.style.display = 'none';
+    reviewActions.style.display = 'none';
+    reviewEmpty.style.display = 'none';
+    reviewComplete.style.display = 'flex';
+    reviewProgressBar.style.width = '100%';
+    if (!reviewSession.todayHadWrong) {
+      reviewSession.dailyStreak++;
+      saveDailyStreak(reviewSession.dailyStreak);
+    }
+    reviewSession.todayCompleted = true;
+    var total = reviewSession.queue.length;
+    reviewCompleteStats.textContent = '共复习 ' + total + ' 个知识点，连续正确 ' + reviewSession.dailyStreak + ' 天';
+    updateReviewStats();
+  }
+
+  function startReview() {
+    loadReviewSession();
+    updateReviewStats();
+    if (reviewSession.queue.length === 0) {
+      showReviewEmpty();
+    } else {
+      showReviewCard();
+    }
+  }
+
+  function finishCurrentCard(correct) {
+    var entry = reviewSession.queue[reviewSession.currentIndex];
+    var data = loadData();
+    var items = data[entry.subject][entry.topic].items;
+    var item = items[entry.index];
+    applyReviewResult(item, correct);
+    saveData(data);
+
+    if (correct) {
+      reviewCard.classList.add('correct-anim');
+    } else {
+      reviewCard.classList.add('wrong-anim');
+      reviewSession.todayHadWrong = true;
+      reviewSession.dailyStreak = 0;
+      saveDailyStreak(0);
+    }
+
+    btnForgot.disabled = true;
+    btnRemember.disabled = true;
+
+    setTimeout(function () {
+      btnForgot.disabled = false;
+      btnRemember.disabled = false;
+      reviewSession.currentIndex++;
+      updateReviewStats();
+      showReviewCard();
+    }, 500);
+  }
+
+  btnReveal.addEventListener('click', function () {
+    cardAnswer.classList.add('show');
+    btnReveal.style.display = 'none';
+  });
+
+  btnRemember.addEventListener('click', function () { finishCurrentCard(true); });
+  btnForgot.addEventListener('click', function () { finishCurrentCard(false); });
+
+  // 进入复习板块时自动加载
+  var reviewTab = document.querySelector('[data-panel="reviewPanel"]');
+  reviewTab.addEventListener('click', function () {
+    startReview();
+  });
+
+  // 如果初始就在复习板块（通过 URL hash 等），暂不处理，默认进入学习板块
 
   /* 初始化 */
   renderKnowledgeTree();
