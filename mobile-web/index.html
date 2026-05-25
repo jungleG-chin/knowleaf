@@ -1500,6 +1500,14 @@
   </div>
 
   <div class="my-section">
+    <h4>💬 反馈建议</h4>
+    <button class="btn-outline" id="btnOpenFeedback" style="width:100%;text-align:left;">✍️ 写反馈...</button>
+    <div style="margin-top:6px;text-align:center;">
+      <a id="btnViewFeedbacks" style="font-size:11px;color:var(--green-600);cursor:pointer;text-decoration:underline;">📋 查看反馈（共 0 条）</a>
+    </div>
+  </div>
+
+  <div class="my-section">
     <h4>ℹ️ 关于</h4>
     <p style="font-size:13px;color:#64748b;line-height:1.8;">
       <strong>KnowLeaf 知叶 v1.1</strong><br>
@@ -1569,6 +1577,40 @@
 </div>
 
 <input type="file" id="importFileInput" accept=".json">
+
+<!-- 反馈弹窗 -->
+<div class="modal-overlay" id="feedbackOverlay" style="display:none;">
+  <div class="modal-card">
+    <h3>💬 反馈建议</h3>
+    <label style="font-size:12px;color:#64748b;">类型</label>
+    <select id="feedbackType" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;margin-bottom:10px;">
+      <option value="bug">🐛 Bug 反馈</option>
+      <option value="feat">💡 功能建议</option>
+      <option value="ux">🔵 使用体验</option>
+      <option value="other">⚪ 其他</option>
+    </select>
+    <label style="font-size:12px;color:#64748b;">内容 <span style="color:#ef4444;">*</span></label>
+    <textarea id="feedbackText" placeholder="请描述你的问题或建议（至少10个字）" style="width:100%;height:100px;resize:vertical;border:1px solid var(--green-300);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;outline:none;-webkit-appearance:none;margin-bottom:10px;"></textarea>
+    <label style="font-size:12px;color:#64748b;">联系方式（选填）</label>
+    <input type="text" id="feedbackContact" placeholder="邮箱 / 微信 / QQ" autocomplete="off" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;margin-bottom:10px;">
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCancelFeedback">取消</button>
+      <button class="btn-save" id="btnSubmitFeedback">提交</button>
+    </div>
+  </div>
+</div>
+
+<!-- 查看反馈弹窗 -->
+<div class="modal-overlay" id="feedbackListOverlay" style="display:none;">
+  <div class="modal-card" style="max-width:600px;">
+    <h3>📋 反馈列表</h3>
+    <div id="feedbackListContent" style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn-outline" id="btnCopyFeedbacks">📤 复制全部</button>
+      <button class="btn-cancel" id="btnCloseFeedbackList">关闭</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -2191,7 +2233,8 @@
       }
     }
 
-    var json = JSON.stringify(data, null, 2);
+    var exportData = { data: data, feedbacks: getFeedbacks(), exportedAt: new Date().toISOString() };
+    var json = JSON.stringify(exportData, null, 2);
     var zip = new JSZip();
     zip.file('knowleaf_backup_' + date + '.json', json);
 
@@ -3623,6 +3666,86 @@
     document.getElementById('myPanel').classList.add('active');
     loadMyPanel();
   });
+
+  /* ===== 用户反馈 ===== */
+  var FEEDBACK_KEY = 'knowleaf_feedbacks';
+  function getFeedbacks() {
+    try { return JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function saveFeedbacks(list) { localStorage.setItem(FEEDBACK_KEY, JSON.stringify(list)); }
+
+  document.getElementById('btnOpenFeedback').addEventListener('click', function () {
+    document.getElementById('feedbackText').value = '';
+    document.getElementById('feedbackContact').value = '';
+    document.getElementById('feedbackOverlay').style.display = 'flex';
+  });
+  document.getElementById('btnCancelFeedback').addEventListener('click', function () {
+    document.getElementById('feedbackOverlay').style.display = 'none';
+  });
+  document.getElementById('feedbackOverlay').addEventListener('click', function (e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+
+  document.getElementById('btnSubmitFeedback').addEventListener('click', function () {
+    var type = document.getElementById('feedbackType').value;
+    var text = document.getElementById('feedbackText').value.trim();
+    var contact = document.getElementById('feedbackContact').value.trim();
+    if (text.length < 10) { showToast('反馈内容至少10个字', 'error'); return; }
+    var list = getFeedbacks();
+    list.push({ type: type, text: text, contact: contact, time: new Date().toISOString() });
+    saveFeedbacks(list);
+    document.getElementById('feedbackOverlay').style.display = 'none';
+    updateFeedbackLink();
+    showToast('感谢反馈！', 'success');
+  });
+
+  function updateFeedbackLink() {
+    var list = getFeedbacks();
+    document.getElementById('btnViewFeedbacks').textContent = '📋 查看反馈（共 ' + list.length + ' 条）';
+  }
+
+  document.getElementById('btnViewFeedbacks').addEventListener('click', function () {
+    var list = getFeedbacks();
+    var typeMap = { bug: ['🐛 Bug', '#ef4444'], feat: ['💡 建议', '#22c55e'], ux: ['🔵 体验', '#3b82f6'], other: ['⚪ 其他', '#94a3b8'] };
+    var html = '';
+    if (list.length === 0) {
+      html = '<div style="text-align:center;padding:24px;color:#94a3b8;">暂无反馈</div>';
+    } else {
+      for (var i = list.length - 1; i >= 0; i--) {
+        var f = list[i];
+        var t = typeMap[f.type] || typeMap.other;
+        html += '<div style="padding:12px;margin-bottom:8px;background:var(--green-50);border-radius:8px;border-left:3px solid ' + t[1] + ';">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
+        html += '<span style="font-size:11px;color:#fff;background:' + t[1] + ';padding:2px 8px;border-radius:4px;font-weight:500;">' + t[0] + '</span>';
+        html += '<span style="font-size:11px;color:#94a3b8;">' + new Date(f.time).toLocaleString('zh-CN') + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:14px;color:#334155;line-height:1.6;margin:6px 0;">' + escHtml(f.text) + '</div>';
+        if (f.contact) html += '<div style="font-size:12px;color:var(--green-600);">📧 ' + escHtml(f.contact) + '</div>';
+        html += '</div>';
+      }
+    }
+    document.getElementById('feedbackListContent').innerHTML = html;
+    document.getElementById('feedbackListOverlay').style.display = 'flex';
+  });
+
+  document.getElementById('btnCloseFeedbackList').addEventListener('click', function () {
+    document.getElementById('feedbackListOverlay').style.display = 'none';
+  });
+  document.getElementById('feedbackListOverlay').addEventListener('click', function (e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+
+  document.getElementById('btnCopyFeedbacks').addEventListener('click', function () {
+    var list = getFeedbacks();
+    var text = list.map(function (f) {
+      return '[' + f.type + '] ' + f.text + (f.contact ? ' (联系: ' + f.contact + ')' : '') + ' - ' + f.time;
+    }).join('\n');
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(function () { showToast('已复制', 'success'); });
+    }
+  });
+
+  updateFeedbackLink();
 
   /* 存量数据自动检测层级（只执行一次） */
   function autoDetectHierarchy(data) {
