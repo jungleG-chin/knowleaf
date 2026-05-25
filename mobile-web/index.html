@@ -2841,27 +2841,26 @@
 
   /* 存量数据自动检测层级（只执行一次） */
   function autoDetectHierarchy(data) {
-    if (localStorage.getItem('knowleaf_hierarchy_migrated')) return false;
     var changed = false;
     for (var s in data) {
       var topics = Object.keys(data[s]);
-      // 按名称长度升序排列
       topics.sort(function (a, b) { return a.length - b.length; });
       for (var i = 0; i < topics.length; i++) {
-        if (data[s][topics[i]].parentTopic) continue; // 已有父节点，跳过
+        if (data[s][topics[i]].parentTopic) continue;
         for (var j = 0; j < i; j++) {
           var shorter = topics[j];
           var longer = topics[i];
-          // 长话题包含短话题名称，且剩余字符 ≥2
-          if (longer.indexOf(shorter) !== -1 && longer.length - shorter.length >= 2) {
+          if (longer.indexOf(shorter) !== -1 && longer.length - shorter.length >= 1) {
             data[s][longer].parentTopic = shorter;
+            if (!data[s][shorter].parentTopic && data[s][shorter].parentTopic !== null) {
+              data[s][shorter].parentTopic = null;
+            }
             changed = true;
             break;
           }
         }
       }
     }
-    localStorage.setItem('knowleaf_hierarchy_migrated', '1');
     if (changed) saveData(data);
     return changed;
   }
