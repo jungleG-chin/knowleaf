@@ -167,7 +167,7 @@
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--green-200);
     border-radius: var(--radius);
-    height: 600px;
+    height: 350px;
   }
   .mindmap-body.collapsed { max-height: 0 !important; height: 0; border: none; margin-top: 0; }
   .mindmap-subject-bar {
@@ -617,43 +617,6 @@
     border-color: var(--green-500);
     box-shadow: 0 0 0 3px rgba(34,197,94,.1);
   }
-
-  /* 分类确认后的底部提示条 */
-  .category-toast {
-    position: fixed;
-    bottom: 20px;
-    left: 16px;
-    right: 16px;
-    background: var(--green-600);
-    color: #fff;
-    border-radius: 14px;
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    z-index: 1001;
-    box-shadow: 0 4px 24px rgba(0,0,0,.2);
-    animation: slideUp .25s ease;
-    font-size: 14px;
-    flex-wrap: wrap;
-  }
-  .category-toast-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .btn-outline-white {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,.5);
-    color: #fff;
-    border-radius: 8px;
-    font-size: 13px;
-    padding: 6px 14px;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  .btn-outline-white:active { background: rgba(255,255,255,.15); }
 
   /* 设置面板细分 */
   .settings-section {
@@ -1654,15 +1617,6 @@
       <button class="btn-cancel" id="btnCategorySkip">跳过分类</button>
       <button class="btn-save" id="btnCategoryConfirm" disabled>确认分类</button>
     </div>
-  </div>
-</div>
-
-<!-- 分类确认后的继续/切换提示条 -->
-<div class="category-toast" id="categoryToast" style="display:none;">
-  <span id="categoryToastText"></span>
-  <div class="category-toast-actions">
-    <button class="btn-sm" id="btnCategoryContinue">继续添加</button>
-    <button class="btn-sm btn-outline-white" id="btnCategorySwitch">切换分类</button>
   </div>
 </div>
 
@@ -3166,7 +3120,7 @@
       mmInstance.setData(root);
       await mmInstance.fit();
     } else {
-      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 1, duration: 300, paddingX: 18, spacingHorizontal: 80, spacingVertical: 12, fitRatio: 0.75, initialExpandLevel: -1 }, root);
+      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 1, duration: 300, paddingX: 18, spacingHorizontal: 80, spacingVertical: 12, fitRatio: 0.9, initialExpandLevel: -1 }, root);
     }
   }
 
@@ -3493,7 +3447,7 @@
       var icons = ['📚', '🔬', '💡'];
       var html = '';
       for (var i = 0; i < suggestedSubjects.length; i++) {
-        html += '<button class="category-chip" data-subject="' + escHtml(suggestedSubjects[i]) + '"><span class="chip-icon">' + (icons[i] || '📌') + '</span>' + escHtml(suggestedSubjects[i]) + '</button>';
+        html += '<button class="category-chip" data-subject="' + escHtml(suggestedSubjects[i]) + '"><span class="chip-icon">' + (icons[i] || '📌') + '</span>' + escHtml(suggestedSubjects[i]) + (i === 0 ? ' ⭐推荐' : '') + '</button>';
       }
       optsEl.innerHTML = html;
       document.getElementById('categoryCustomInput').value = '';
@@ -3555,35 +3509,23 @@
     }
   });
 
-  /* 分类确认后的底部提示条 */
-  var currentCategorySubject = null;
-
-  function showCategoryToast(subject) {
-    if (!subject || subject === 'null' || subject === 'undefined') return;
-    currentCategorySubject = subject;
-    document.getElementById('categoryToastText').textContent = '✅ 已添加到「' + subject + '」';
-    document.getElementById('categoryToast').style.display = 'flex';
+  /* 智能匹配：优先归入已有 topic */
+  function smartMatchTopic(subject, newTopic) {
+    var data = loadData();
+    if (!data[subject]) return null;
+    var existing = Object.keys(data[subject]);
+    // 1. 精确匹配
+    if (existing.indexOf(newTopic) >= 0) return newTopic;
+    // 2. 新 topic 包含某个已有 topic（如"期权定价"包含"期权"）
+    for (var i = 0; i < existing.length; i++) {
+      if (newTopic.indexOf(existing[i]) >= 0 && existing[i].length >= 2) return existing[i];
+    }
+    // 3. 已有 topic 包含新 topic（如已有"期权定价"，新的是"期权"）
+    for (var i = 0; i < existing.length; i++) {
+      if (existing[i].indexOf(newTopic) >= 0 && newTopic.length >= 2) return existing[i];
+    }
+    return null;
   }
-
-  function hideCategoryToast() {
-    document.getElementById('categoryToast').style.display = 'none';
-    currentCategorySubject = null;
-  }
-
-  document.getElementById('btnCategoryContinue').addEventListener('click', function () {
-    hideCategoryToast();
-    // 聚焦输入框，预填分类上下文
-    userInput.focus();
-    userInput.placeholder = '继续记录「' + currentCategorySubject + '」下的内容...';
-    showToast('继续在「' + currentCategorySubject + '」下记录吧', 'success');
-  });
-
-  document.getElementById('btnCategorySwitch').addEventListener('click', function () {
-    hideCategoryToast();
-    userInput.focus();
-    userInput.placeholder = '粘贴或输入你想整理的知识内容...';
-    showToast('已切换，输入新内容即可', 'success');
-  });
 
   /* 知识点合并检查 */
   function checkTopicMerge(subject, topic) {
@@ -3769,9 +3711,17 @@
         for (var idx = 0; idx < items.length; idx++) {
           var item = items[idx];
           if (item.error) continue;
-          var finalSubject = (idx === 0) ? primarySubject : (item.subject || primarySubject);
+          var finalSubject = primarySubject;
           var itemImage = (idx === 0) ? firstImage : undefined;
-          if (checkTopicMerge(finalSubject, item.topic)) {
+          // 智能匹配：优先归入已有 topic
+          var matchedTopic = smartMatchTopic(finalSubject, item.topic);
+          if (matchedTopic) {
+            // 归入已有 topic
+            await addKnowledge(savedText, finalSubject, matchedTopic, item.summary, itemImage, item.parentTopic || null);
+            if (matchedTopic !== item.topic) {
+              showToast('「' + item.topic + '」已自动归入「' + matchedTopic + '」', 'success');
+            }
+          } else if (checkTopicMerge(finalSubject, item.topic)) {
             await showMergeDialog(finalSubject, item.topic, item.summary, savedText, itemImage, item.parentTopic || null);
           } else {
             await addKnowledge(savedText, finalSubject, item.topic, item.summary, itemImage, item.parentTopic || null);
@@ -3786,11 +3736,6 @@
           mindmapToggle.classList.remove('collapsed');
         }
         showToast('分析成功，知识库已更新！', 'success');
-
-        // ★ 显示继续/切换分类提示
-        if (primarySubject && primarySubject !== 'null' && primarySubject !== 'undefined') {
-          showCategoryToast(primarySubject);
-        }
 
       } catch (e) {
         console.error('API 解析失败，原始返回:', result);
