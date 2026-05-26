@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "knowleaf",
+  "compatibility_date": "2026-05-26",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "mobile-web"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
