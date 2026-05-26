@@ -3675,20 +3675,21 @@
 
   function sendFeedbackEmail(type, text, contact) {
     var typeLabel = { bug: 'Bug反馈', feat: '功能建议', ux: '使用体验', other: '其他' }[type] || type;
+    var formData = new URLSearchParams();
+    formData.append('_subject', '[' + typeLabel + '] KnowLeaf 反馈');
+    formData.append('message',
+      '反馈类型：' + typeLabel + '\n' +
+      '────────────────\n' +
+      text + '\n' +
+      '────────────────\n' +
+      '联系方式：' + (contact || '未填写') + '\n' +
+      '时间：' + new Date().toLocaleString('zh-CN')
+    );
+    if (contact) formData.append('_replyto', contact);
     return fetch(FORMSPREE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        _subject: '[' + typeLabel + '] KnowLeaf 反馈',
-        message: '' +
-          '反馈类型：' + typeLabel + '\n' +
-          '────────────────\n' +
-          text + '\n' +
-          '────────────────\n' +
-          '联系方式：' + (contact || '未填写') + '\n' +
-          '时间：' + new Date().toLocaleString('zh-CN'),
-        _replyto: contact || ''
-      })
+      headers: { 'Accept': 'application/json' },
+      body: formData
     });
   }
 
