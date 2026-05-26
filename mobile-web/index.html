@@ -1582,7 +1582,7 @@
       <option value="other">⚪ 其他</option>
     </select>
     <label style="font-size:12px;color:#64748b;">内容 <span style="color:#ef4444;">*</span></label>
-    <textarea id="feedbackText" placeholder="请描述你的问题或建议（至少10个字）" style="width:100%;height:100px;resize:vertical;border:1px solid var(--green-300);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;outline:none;-webkit-appearance:none;margin-bottom:10px;"></textarea>
+    <textarea id="feedbackText" placeholder="请描述你的问题或建议" style="width:100%;height:100px;resize:vertical;border:1px solid var(--green-300);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;outline:none;-webkit-appearance:none;margin-bottom:10px;"></textarea>
     <label style="font-size:12px;color:#64748b;">联系方式（选填）</label>
     <input type="text" id="feedbackContact" placeholder="邮箱 / 微信 / QQ" autocomplete="off" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;margin-bottom:10px;">
     <div class="modal-actions">
@@ -3679,15 +3679,15 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        subject: '[' + typeLabel + '] KnowLeaf 反馈',
+        _subject: '[' + typeLabel + '] KnowLeaf 反馈',
         message: '' +
           '反馈类型：' + typeLabel + '\n' +
           '────────────────\n' +
           text + '\n' +
           '────────────────\n' +
           '联系方式：' + (contact || '未填写') + '\n' +
-          '时间：' + new Date().toLocaleString('zh-CN') + '\n' +
-          'UA：' + navigator.userAgent
+          '时间：' + new Date().toLocaleString('zh-CN'),
+        _replyto: contact || ''
       })
     });
   }
@@ -3708,7 +3708,7 @@
     var type = document.getElementById('feedbackType').value;
     var text = document.getElementById('feedbackText').value.trim();
     var contact = document.getElementById('feedbackContact').value.trim();
-    if (text.length < 10) { showToast('反馈内容至少10个字', 'error'); return; }
+    if (!text) { showToast('请输入反馈内容', 'error'); return; }
 
     var btn = this;
     btn.disabled = true;
