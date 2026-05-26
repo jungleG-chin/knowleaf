@@ -1299,9 +1299,7 @@
   <div class="modal-card">
     <h3>🔑 配置 API Key</h3>
     <p class="hint">
-      请输入你的 DeepSeek API Key，可在
-      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">DeepSeek 开放平台</a> 获取。
-      Key 仅保存在你的浏览器本地。
+      请输入你的 API Key（支持通义千问、DeepSeek 等兼容 OpenAI 接口的平台），Key 仅保存在你的浏览器本地。
     </p>
     <input type="password" id="apiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
     <div class="modal-actions">
@@ -1323,9 +1321,9 @@
     <div class="settings-section">
       <h4>🤖 模型配置</h4>
       <select id="settingsPlatform">
-        <option value="deepseek">DeepSeek（默认）</option>
+        <option value="aliyun">阿里百炼 - 通义千问（默认）</option>
+        <option value="deepseek">DeepSeek</option>
         <option value="siliconflow">硅基流动（SiliconFlow）</option>
-        <option value="aliyun">阿里百炼（通义千问）</option>
         <option value="groq">Groq</option>
         <option value="custom">自定义</option>
       </select>
@@ -1435,9 +1433,9 @@
     <input type="password" id="myApiKey" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
     <div class="field-hint">API Key 仅保存在你的浏览器本地</div>
     <select id="myPlatform" style="width:100%;padding:12px 14px;border:1px solid var(--green-300);border-radius:8px;font-size:15px;font-family:inherit;outline:none;background:rgba(255,255,255,.7);color:#334155;min-height:44px;-webkit-appearance:none;margin-bottom:8px;">
+      <option value="aliyun">阿里百炼 - 通义千问（默认）</option>
       <option value="deepseek">DeepSeek</option>
       <option value="siliconflow">硅基流动（SiliconFlow）</option>
-      <option value="aliyun">阿里百炼（通义千问）</option>
       <option value="groq">Groq</option>
       <option value="custom">自定义</option>
     </select>
@@ -1619,7 +1617,7 @@
     });
   });
 
-  const LS_KEY   = 'knowleaf_deepseek_apikey';
+  const LS_KEY   = 'knowleaf_apikey';
   const URL_KEY  = 'knowleaf_api_url';
   const MODEL_KEY = 'knowleaf_model';
   const DATA_KEY = 'knowleaf_data';
@@ -1966,8 +1964,8 @@
   var DEFAULT_API_KEY = 'sk-51eb563fb45e49bd9d7fedae992699b4';
 
   /* 工具 */
-  function getApiKey()  { return localStorage.getItem(LS_KEY) || DEFAULT_API_KEY; }
-  function saveApiKey(key) { localStorage.setItem(LS_KEY, key); }
+  function getApiKey()  { return localStorage.getItem(LS_KEY) || localStorage.getItem('knowleaf_deepseek_apikey') || DEFAULT_API_KEY; }
+  function saveApiKey(key) { localStorage.setItem(LS_KEY, key); localStorage.removeItem('knowleaf_deepseek_apikey'); }
   function getApiUrl() { return localStorage.getItem(URL_KEY) || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'; }
   function saveApiUrl(url) { localStorage.setItem(URL_KEY, url); }
   function getModel()  { return localStorage.getItem(MODEL_KEY) || 'qwen-vl-max'; }
