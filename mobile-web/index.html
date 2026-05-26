@@ -167,7 +167,7 @@
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--green-200);
     border-radius: var(--radius);
-    height: 350px;
+    height: 600px;
   }
   .mindmap-body.collapsed { max-height: 0 !important; height: 0; border: none; margin-top: 0; }
   .mindmap-subject-bar {
@@ -2223,6 +2223,57 @@
     refreshMindmap();
   }
 
+  // 删除整个学科
+  async function deleteSubject(subject) {
+    var data = loadData();
+    if (!data[subject]) return;
+    // 删除所有图片（IndexedDB）
+    Object.keys(data[subject]).forEach(function (topic) {
+      var items = data[subject][topic].items || [];
+      items.forEach(function (rec) {
+        if (rec.imageId) IMG_DB.del(rec.imageId).catch(function(){});
+      });
+    });
+    delete data[subject];
+    saveData(data);
+    renderKnowledgeTree();
+    refreshMindmap();
+    showToast('已删除学科「' + subject + '」', 'success');
+  }
+
+  // 重命名学科（迁移所有记录到新学科名下）
+  function renameSubject(oldName, newName) {
+    var data = loadData();
+    if (!data[oldName]) return;
+    if (data[newName]) { showToast('学科「' + newName + '」已存在，请换一个名字', 'error'); return; }
+    data[newName] = data[oldName];
+    delete data[oldName];
+    saveData(data);
+    renderKnowledgeTree();
+    refreshMindmap();
+    showToast('已重命名为「' + newName + '」', 'success');
+  }
+
+  // 重命名知识点（独立重命名 topic 并更新子节点引用）
+  function renameTopic(subject, oldTopic, newTopic) {
+    var data = loadData();
+    if (!data[subject] || !data[subject][oldTopic]) return;
+    if (data[subject][newTopic]) { showToast('知识点「' + newTopic + '」已存在', 'error'); return; }
+    // 迁移数据
+    data[subject][newTopic] = data[subject][oldTopic];
+    delete data[subject][oldTopic];
+    // 更新所有子 topic 的 parentTopic 引用
+    Object.keys(data[subject]).forEach(function (t) {
+      if (data[subject][t].parentTopic === oldTopic) {
+        data[subject][t].parentTopic = newTopic;
+      }
+    });
+    saveData(data);
+    renderKnowledgeTree();
+    refreshMindmap();
+    showToast('已重命名为「' + newTopic + '」', 'success');
+  }
+
   function countRecords(data) {
     var c = 0;
     Object.keys(data).forEach(function (s) {
@@ -2586,9 +2637,13 @@
       visibleTopics.forEach(function (vt) { subjTotal += vt.totalCount; });
 
       html += '<div class="subject-group">';
-      html += '<div class="subject-toggle" data-subject="' + escHtml(subj) + '" style="border-left: 4px solid ' + getSubjectColor(subj) + ';">';
+      html += '<div class="subject-toggle" data-subject="' + escHtml(subj) + '" style="border-left: 4px solid ' + getSubjectColor(subj) + ';display:flex;align-items:center;gap:8px;">';
       html += '<span class="arrow">▼</span>' + highlightText(subj, keywords);
-      html += '<span class="badge">' + subjTotal + '</span></div>';
+      html += '<span class="badge">' + subjTotal + '</span>';
+      html += '<span style="margin-left:auto;display:flex;gap:4px;">';
+      html += '<button class="btn-subject-edit" data-subject="' + escHtml(subj) + '" style="font-size:11px;padding:2px 6px;border:1px solid var(--green-200);border-radius:4px;background:rgba(255,255,255,.6);color:#64748b;cursor:pointer;" title="重命名学科">✏️</button>';
+      html += '<button class="btn-subject-delete" data-subject="' + escHtml(subj) + '" style="font-size:11px;padding:2px 6px;border:1px solid #fecaca;border-radius:4px;background:rgba(255,255,255,.6);color:#ef4444;cursor:pointer;" title="删除学科">✕</button>';
+      html += '</span></div>';
       html += '<div class="topic-children" data-subject-children="' + escHtml(subj) + '">';
 
       // 辅助函数：渲染单个 topic 块
@@ -2597,8 +2652,10 @@
         var paddingStyle = indent > 0 ? 'padding-left:' + (18 * indent) + 'px;' : '';
         var childClass = indent > 0 ? ' topic-child' : '';
         html += '<div class="topic-group' + childClass + '" style="' + paddingStyle + '">';
-        html += '<div class="topic-toggle" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '">';
-        html += '<span class="arrow">▼</span>' + highlightText(vt.name, keywords) + ' (' + vt.totalCount + ')</div>';
+        html += '<div class="topic-toggle" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" style="display:flex;align-items:center;gap:4px;">';
+        html += '<span class="arrow">▼</span>' + highlightText(vt.name, keywords) + ' (' + vt.totalCount + ')';
+        html += '<button class="btn-topic-rename" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '" style="font-size:10px;margin-left:auto;padding:1px 4px;border:1px solid #e2e8f0;border-radius:3px;background:transparent;color:#94a3b8;cursor:pointer;" title="重命名知识点">✏️</button>';
+        html += '</div>';
         html += '<div class="record-list" data-topic-children="' + escHtml(subj) + '|' + escHtml(vt.name) + '">';
         vt.records.forEach(function (item) {
           var rec = item.rec, idx = item.idx;
@@ -2841,6 +2898,39 @@
         if (confirm('确定删除 "' + top + '" 下的这条记录吗？')) deleteRecord(subj, top, idx);
       });
     });
+    // 学科重命名
+    knowledgeTree.querySelectorAll('.btn-subject-edit').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var oldName = this.getAttribute('data-subject');
+        var newName = prompt('重命名学科「' + oldName + '」为：', oldName);
+        if (newName && newName.trim() && newName.trim() !== oldName) {
+          renameSubject(oldName, newName.trim());
+        }
+      });
+    });
+    // 学科删除
+    knowledgeTree.querySelectorAll('.btn-subject-delete').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var subj = this.getAttribute('data-subject');
+        if (confirm('确定删除学科「' + subj + '」及其所有知识点吗？此操作不可撤销。')) {
+          deleteSubject(subj);
+        }
+      });
+    });
+    // 知识点重命名
+    knowledgeTree.querySelectorAll('.btn-topic-rename').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var subj = this.getAttribute('data-subject');
+        var oldTopic = this.getAttribute('data-topic');
+        var newTopic = prompt('重命名知识点「' + oldTopic + '」为：', oldTopic);
+        if (newTopic && newTopic.trim() && newTopic.trim() !== oldTopic) {
+          renameTopic(subj, oldTopic, newTopic.trim());
+        }
+      });
+    });
   }
 
   /* Markmap */
@@ -2894,9 +2984,13 @@
             if (data[s][ct].parentTopic === t) {
               lines.push('#### ' + ct);
               var citems = data[s][ct].items || [];
-              citems.forEach(function (r) {
-                lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
-              });
+              if (citems.length > 0) {
+                citems.forEach(function (r) {
+                  lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
+                });
+              } else {
+                lines.push('- （待添加内容）');
+              }
             }
           });
         });
@@ -2919,26 +3013,6 @@
 
   /* 智能合并：发现同级 topic 中的公共关键词 */
   /* 查找两个字符串的所有公共子串（长度>=2） */
-  function findCommonSubstrings(a, b) {
-    var results = [];
-    var minLen = 2;
-    for (var i = 0; i <= a.length - minLen; i++) {
-      for (var j = i + minLen; j <= a.length; j++) {
-        var sub = a.substring(i, j);
-        if (b.indexOf(sub) !== -1) {
-          // 去重：只保留最长的（避免"极限"和"极限的"同时出现）
-          var isSubOfExisting = results.some(function (r) { return r.indexOf(sub) !== -1 && r.length > sub.length; });
-          if (!isSubOfExisting) {
-            // 移除已有的更短子串
-            results = results.filter(function (r) { return !(sub.indexOf(r) !== -1 && sub.length > r.length); });
-            results.push(sub);
-          }
-        }
-      }
-    }
-    return results;
-  }
-
   function findMergeCandidates(data) {
     var candidates = [];
     var subjects = Object.keys(data).filter(function (s) {
@@ -2947,44 +3021,41 @@
       return t && t !== 'null' && t !== 'undefined';
     });
     subjects.forEach(function (subject) {
-      var topics = Object.keys(data[subject]);
-      // 收集所有顶级 topic（无 parentTopic）和有 parentTopic 的二级 topic
-      var allTopicNames = topics.map(function (t) { return t; });
-      if (allTopicNames.length < 2) return;
+      // 只匹配同级 topic（无 parentTopic 的顶级 topic）
+      var topics = Object.keys(data[subject]).filter(function (t) {
+        return !data[subject][t].parentTopic;
+      });
+      if (topics.length < 2) return;
 
-      // 两两比较找公共子串
-      var subToTopics = {};
-      for (var i = 0; i < allTopicNames.length; i++) {
-        for (var j = i + 1; j < allTopicNames.length; j++) {
-          var subs = findCommonSubstrings(allTopicNames[i], allTopicNames[j]);
-          subs.forEach(function (sub) {
-            // 排除纯标点、纯数字、单个英文字母
-            if (/^[\d\s\.\,\;\:\!\(\)\[\]\{\}]+$/.test(sub)) return;
-            if (/^[a-zA-Z]$/.test(sub)) return;
-            if (!subToTopics[sub]) subToTopics[sub] = {};
-            subToTopics[sub][allTopicNames[i]] = true;
-            subToTopics[sub][allTopicNames[j]] = true;
-          });
+      // 两两比较，找公共前缀
+      var prefixGroups = {};
+      for (var i = 0; i < topics.length; i++) {
+        for (var j = i + 1; j < topics.length; j++) {
+          var a = topics[i], b = topics[j];
+          var commonPrefix = '';
+          var minLen = Math.min(a.length, b.length);
+          for (var k = 0; k < minLen; k++) {
+            if (a[k] === b[k]) commonPrefix += a[k]; else break;
+          }
+          // 前缀长度 ≥ 2 且严格短于两个 topic 名
+          if (commonPrefix.length >= 2 && commonPrefix.length < a.length && commonPrefix.length < b.length) {
+            if (!prefixGroups[commonPrefix]) prefixGroups[commonPrefix] = {};
+            prefixGroups[commonPrefix][a] = true;
+            prefixGroups[commonPrefix][b] = true;
+          }
         }
       }
 
-      // 筛选：至少覆盖 2 个 topic 的公共子串才有效
-      Object.keys(subToTopics).forEach(function (sub) {
-        var matchedList = Object.keys(subToTopics[sub]);
-        if (matchedList.length >= 2) {
-          // 排除已经是某个 topic 名的子串（即整个 topic 名完全等于子串）
-          var isTopicItself = matchedList.some(function (t) { return t === sub; });
-          candidates.push({
-            subject: subject,
-            parent: sub,
-            children: matchedList,
-            keyword: sub
-          });
+      // 生成候选：至少覆盖 2 个 topic，且前缀不是已有 topic 名
+      Object.keys(prefixGroups).forEach(function (prefix) {
+        var matched = Object.keys(prefixGroups[prefix]);
+        if (matched.length >= 2 && matched.indexOf(prefix) === -1) {
+          candidates.push({ subject: subject, parent: prefix, children: matched, keyword: prefix });
         }
       });
     });
 
-    // 去重：如果多组候选合并项的子项集合完全相同，只保留最长 parent 的
+    // 去重：如果多组候选的子项集合完全相同，只保留最长 parent 的
     var deduped = [];
     candidates.forEach(function (c) {
       var sorted = c.children.slice().sort().join('|');
@@ -3095,7 +3166,7 @@
       mmInstance.setData(root);
       await mmInstance.fit();
     } else {
-      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 1, duration: 300, paddingX: 18, spacingHorizontal: 80, spacingVertical: 12, fitRatio: 0.85, initialExpandLevel: -1 }, root);
+      mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 1, duration: 300, paddingX: 18, spacingHorizontal: 80, spacingVertical: 12, fitRatio: 0.75, initialExpandLevel: -1 }, root);
     }
   }
 
