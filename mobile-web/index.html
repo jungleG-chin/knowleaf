@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>KnowLeaf 知叶 — 一叶知秋，求知叶矣</title>
+<title>KnowLeaf 知叶 — the leaf, know all you need</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 3C16 3 5 9 5 19C5 25 9 29 13 29C15 29 17 27 17 27C17 27 19 29 21 29C25 29 29 25 29 19C29 9 18 3 16 3Z' fill='%2322c55e'/><line x1='16' y1='17' x2='16' y2='29' stroke='%23166534' stroke-width='1.5'/><path d='M16 17L16 9' stroke='%23166534' stroke-width='1' opacity='0.6'/></svg>">
 <style>
   :root {
@@ -568,6 +568,92 @@
     border: none;
     color: #fff;
   }
+
+  /* 分类选择弹窗 */
+  .category-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .category-chip {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--green-200);
+    border-radius: 10px;
+    background: rgba(255,255,255,.8);
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--green-800);
+    cursor: pointer;
+    text-align: left;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .category-chip:active, .category-chip.selected {
+    border-color: var(--green-500);
+    background: var(--green-50);
+    box-shadow: 0 0 0 3px rgba(34,197,94,.15);
+  }
+  .category-chip .chip-icon { font-size: 18px; }
+  .category-custom {
+    margin-bottom: 14px;
+  }
+  .category-custom input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--green-300);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    background: rgba(255,255,255,.7);
+    min-height: 44px;
+    transition: border-color .15s;
+  }
+  .category-custom input:focus {
+    border-color: var(--green-500);
+    box-shadow: 0 0 0 3px rgba(34,197,94,.1);
+  }
+
+  /* 分类确认后的底部提示条 */
+  .category-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+    background: var(--green-600);
+    color: #fff;
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    z-index: 1001;
+    box-shadow: 0 4px 24px rgba(0,0,0,.2);
+    animation: slideUp .25s ease;
+    font-size: 14px;
+    flex-wrap: wrap;
+  }
+  .category-toast-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .btn-outline-white {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.5);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-outline-white:active { background: rgba(255,255,255,.15); }
 
   /* 设置面板细分 */
   .settings-section {
@@ -1228,7 +1314,7 @@
 <div class="header">
   <div class="logo">
     <div class="logo-main"><span>🍃</span>KnowLeaf 知叶</div>
-    <div class="logo-tagline">一叶知秋，求知叶矣 · One leaf, all you need to know.</div>
+    <div class="logo-tagline">一叶知秋，求知叶矣 · the leaf, know all you need</div>
   </div>
   <button class="btn-settings" id="btnSettings">⚙ 设置</button>
 </div>
@@ -1282,6 +1368,7 @@
         <button class="btn-sm" id="btnExport">📤</button>
         <button class="btn-sm" id="btnImport">📥</button>
         <button class="btn-sm danger" id="btnClearAll">🗑</button>
+        <button class="btn-sm" id="btnSmartMerge" style="background:var(--green-100);color:var(--green-700);">🔗 智能合并</button>
       </div>
     </div>
     <div class="search-bar" style="position:relative;">
@@ -1550,6 +1637,44 @@
         <button class="btn-cancel" id="btnMergeNew">创建新分支</button>
         <button class="btn-save" id="btnMergeAppend">追加到现有</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 分类选择弹窗 -->
+<div class="modal-overlay" id="categoryModalOverlay" style="display:none;">
+  <div class="modal-card">
+    <h3>📂 请选择知识分类</h3>
+    <p class="hint" id="categoryHint"></p>
+    <div class="category-options" id="categoryOptions"></div>
+    <div class="category-custom">
+      <input type="text" id="categoryCustomInput" placeholder="自定义分类（如果以上都不合适）" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnCategorySkip">跳过分类</button>
+      <button class="btn-save" id="btnCategoryConfirm" disabled>确认分类</button>
+    </div>
+  </div>
+</div>
+
+<!-- 分类确认后的继续/切换提示条 -->
+<div class="category-toast" id="categoryToast" style="display:none;">
+  <span id="categoryToastText"></span>
+  <div class="category-toast-actions">
+    <button class="btn-sm" id="btnCategoryContinue">继续添加</button>
+    <button class="btn-sm btn-outline-white" id="btnCategorySwitch">切换分类</button>
+  </div>
+</div>
+
+<!-- 智能合并确认弹窗 -->
+<div class="modal-overlay" id="smartMergeOverlay" style="display:none;">
+  <div class="modal-card">
+    <h3>🔗 智能合并建议</h3>
+    <p class="hint">检测到以下知识点可能属于同一父概念，是否创建父节点并归入其下？</p>
+    <div id="smartMergeList" style="max-height:50vh;overflow-y:auto;margin-bottom:14px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btnSmartMergeCancel">取消</button>
+      <button class="btn-save" id="btnSmartMergeApply">执行合并</button>
     </div>
   </div>
 </div>
@@ -2039,6 +2164,18 @@
   }
 
   async function addKnowledge(text, subject, topic, summary, imageBase64, parentTopic) {
+    // 拒绝 null/undefined/空字符串的 subject
+    if (!subject || subject === 'null' || subject === 'undefined' || (typeof subject === 'string' && subject.trim() === '')) {
+      console.warn('addKnowledge: 拒绝无效 subject:', subject);
+      return;
+    }
+    subject = (subject + '').trim();
+    // 拒绝无效 topic
+    if (!topic || topic === 'null' || topic === 'undefined' || (typeof topic === 'string' && topic.trim() === '')) {
+      console.warn('addKnowledge: 拒绝无效 topic:', topic);
+      return;
+    }
+    topic = (topic + '').trim();
     var data = loadData();
     if (!data[subject]) data[subject] = {};
     if (!data[subject][topic]) {
@@ -2350,7 +2487,7 @@
   function renderKnowledgeTree() {
     var data = loadData();
     var keywords = getSearchKeywords();
-    var subjects = Object.keys(data);
+    var subjects = Object.keys(data).filter(function (s) { if (!s) return false; var t = (s + '').trim(); return t && t !== 'null' && t !== 'undefined'; });
     var totalCount = 0, anyVisible = false;
     subjects.forEach(function (s) {
       Object.keys(data[s]).forEach(function (t) {
@@ -2412,10 +2549,9 @@
       });
       html += '</div>';
     } else {
-      // 原有树状渲染
+      // 树状渲染（按 parent/child 层级）
       subjects.forEach(function (subj) {
-      var topics = data[subj];
-      var topicKeys = Object.keys(topics);
+      var topicKeys = Object.keys(data[subj]);
       var visibleTopics = [];
       topicKeys.forEach(function (top) {
         var topicItems = data[subj][top].items || [];
@@ -2432,6 +2568,20 @@
       });
       if (visibleTopics.length === 0 && isFiltering) return;
 
+      // 分离父级 topic（无 parentTopic）和子级 topic
+      var parentTopics = [];
+      var childTopicsMap = {}; // { parentName: [childTopic, ...] }
+      visibleTopics.forEach(function (vt) {
+        var p = data[subj][vt.name] && data[subj][vt.name].parentTopic;
+        if (!p) {
+          parentTopics.push(vt);
+        } else {
+          if (!childTopicsMap[p]) childTopicsMap[p] = [];
+          childTopicsMap[p].push(vt);
+        }
+      });
+
+      // 将没有 parent 的 topic 里那些实际上只是父容器的（自己有 children 但没有 items）也正确处理
       var subjTotal = 0;
       visibleTopics.forEach(function (vt) { subjTotal += vt.totalCount; });
 
@@ -2440,9 +2590,13 @@
       html += '<span class="arrow">▼</span>' + highlightText(subj, keywords);
       html += '<span class="badge">' + subjTotal + '</span></div>';
       html += '<div class="topic-children" data-subject-children="' + escHtml(subj) + '">';
-      visibleTopics.forEach(function (vt) {
-        var isChild = !!(data[subj][vt.name] && data[subj][vt.name].parentTopic);
-        html += '<div class="topic-group' + (isChild ? ' topic-child' : '') + '" style="' + (isChild ? 'padding-left:18px;' : '') + '">';
+
+      // 辅助函数：渲染单个 topic 块
+      function renderTopicBlock(vt, indentLevel) {
+        var indent = indentLevel || 0;
+        var paddingStyle = indent > 0 ? 'padding-left:' + (18 * indent) + 'px;' : '';
+        var childClass = indent > 0 ? ' topic-child' : '';
+        html += '<div class="topic-group' + childClass + '" style="' + paddingStyle + '">';
         html += '<div class="topic-toggle" data-subject="' + escHtml(subj) + '" data-topic="' + escHtml(vt.name) + '">';
         html += '<span class="arrow">▼</span>' + highlightText(vt.name, keywords) + ' (' + vt.totalCount + ')</div>';
         html += '<div class="record-list" data-topic-children="' + escHtml(subj) + '|' + escHtml(vt.name) + '">';
@@ -2456,7 +2610,6 @@
             if (rec.imageId) {
               html += '<div class="lazy-thumb-placeholder" data-image-id="' + escHtml(rec.imageId) + '" style="width:100%;height:80px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;">⏳ 加载中...</div>';
             } else if (rec.image) {
-              // 兜底：旧 base64 直接显示（迁移完成前）
               html += '<img src="' + escHtml(rec.image) + '" style="width:100%;max-height:120px;object-fit:contain;border-radius:4px;border:1px solid var(--green-200);" onerror="this.style.display=\'none\';this.parentNode.innerHTML+=\'<div style=padding:12px;text-align:center;color:#94a3b8;font-size:13px;>图片加载失败</div>\'">';
             }
             html += '</div>';
@@ -2469,7 +2622,33 @@
           html += '</li>';
         });
         html += '</div></div>';
+      }
+
+      // 渲染父级 topic，并在其下渲染子级
+      parentTopics.forEach(function (pt) {
+        renderTopicBlock(pt, 0);
+        // 渲染该父级下的子 topic
+        var children = childTopicsMap[pt.name];
+        if (children) {
+          children.forEach(function (ct) {
+            renderTopicBlock(ct, 1);
+          });
+        }
       });
+
+      // 渲染孤儿子 topic（parent 不在 visibleTopics 中）
+      var renderedChildren = {};
+      parentTopics.forEach(function (pt) {
+        var children = childTopicsMap[pt.name];
+        if (children) children.forEach(function (ct) { renderedChildren[ct.name] = true; });
+      });
+      visibleTopics.forEach(function (vt) {
+        var p = data[subj][vt.name] && data[subj][vt.name].parentTopic;
+        if (p && !renderedChildren[vt.name]) {
+          renderTopicBlock(vt, 0);
+        }
+      });
+
       html += '</div></div>';
     });
     } // end if (isSearching) else
@@ -2507,7 +2686,7 @@
     }
   }
 
-  function escHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function escHtml(s) { if (s === null || s === undefined) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
   function bindTreeEvents() {
     knowledgeTree.querySelectorAll('.subject-toggle').forEach(function (el) {
@@ -2667,7 +2846,7 @@
   /* Markmap */
   function buildMarkdown(data, expandSubject) {
     var lines = [];
-    var allSubjects = Object.keys(data);
+    var allSubjects = Object.keys(data).filter(function (s) { if (!s) return false; var t = (s + '').trim(); return t && t !== 'null' && t !== 'undefined'; });
     if (allSubjects.length === 0) return '';
     // expandSubject: true=展开全部, null=折叠全部, string=只展开该学科
     var expandAll = (expandSubject === true);
@@ -2681,7 +2860,10 @@
       subjects = allSubjects;
     }
     subjects.forEach(function (s) {
-      lines.push('## ' + s);
+      // 单选模式下不再输出重复的 ## 学科名
+      if (typeof expandSubject !== 'string' || expandSubject === null) {
+        lines.push('## ' + s);
+      }
       if (!expandAll && expandSubject !== s) {
         // 折叠模式：只列出话题名，不展开具体条目
         var topics = Object.keys(data[s]);
@@ -2735,9 +2917,154 @@
   var mmInstance = null;
   var currentMindmapSubject = null;
 
+  /* 智能合并：发现同级 topic 中的公共关键词 */
+  /* 查找两个字符串的所有公共子串（长度>=2） */
+  function findCommonSubstrings(a, b) {
+    var results = [];
+    var minLen = 2;
+    for (var i = 0; i <= a.length - minLen; i++) {
+      for (var j = i + minLen; j <= a.length; j++) {
+        var sub = a.substring(i, j);
+        if (b.indexOf(sub) !== -1) {
+          // 去重：只保留最长的（避免"极限"和"极限的"同时出现）
+          var isSubOfExisting = results.some(function (r) { return r.indexOf(sub) !== -1 && r.length > sub.length; });
+          if (!isSubOfExisting) {
+            // 移除已有的更短子串
+            results = results.filter(function (r) { return !(sub.indexOf(r) !== -1 && sub.length > r.length); });
+            results.push(sub);
+          }
+        }
+      }
+    }
+    return results;
+  }
+
+  function findMergeCandidates(data) {
+    var candidates = [];
+    var subjects = Object.keys(data).filter(function (s) {
+      if (!s) return false;
+      var t = (s + '').trim();
+      return t && t !== 'null' && t !== 'undefined';
+    });
+    subjects.forEach(function (subject) {
+      var topics = Object.keys(data[subject]);
+      // 收集所有顶级 topic（无 parentTopic）和有 parentTopic 的二级 topic
+      var allTopicNames = topics.map(function (t) { return t; });
+      if (allTopicNames.length < 2) return;
+
+      // 两两比较找公共子串
+      var subToTopics = {};
+      for (var i = 0; i < allTopicNames.length; i++) {
+        for (var j = i + 1; j < allTopicNames.length; j++) {
+          var subs = findCommonSubstrings(allTopicNames[i], allTopicNames[j]);
+          subs.forEach(function (sub) {
+            // 排除纯标点、纯数字、单个英文字母
+            if (/^[\d\s\.\,\;\:\!\(\)\[\]\{\}]+$/.test(sub)) return;
+            if (/^[a-zA-Z]$/.test(sub)) return;
+            if (!subToTopics[sub]) subToTopics[sub] = {};
+            subToTopics[sub][allTopicNames[i]] = true;
+            subToTopics[sub][allTopicNames[j]] = true;
+          });
+        }
+      }
+
+      // 筛选：至少覆盖 2 个 topic 的公共子串才有效
+      Object.keys(subToTopics).forEach(function (sub) {
+        var matchedList = Object.keys(subToTopics[sub]);
+        if (matchedList.length >= 2) {
+          // 排除已经是某个 topic 名的子串（即整个 topic 名完全等于子串）
+          var isTopicItself = matchedList.some(function (t) { return t === sub; });
+          candidates.push({
+            subject: subject,
+            parent: sub,
+            children: matchedList,
+            keyword: sub
+          });
+        }
+      });
+    });
+
+    // 去重：如果多组候选合并项的子项集合完全相同，只保留最长 parent 的
+    var deduped = [];
+    candidates.forEach(function (c) {
+      var sorted = c.children.slice().sort().join('|');
+      var existing = false;
+      for (var i = 0; i < deduped.length; i++) {
+        var dedupedSorted = deduped[i].children.slice().sort().join('|');
+        if (sorted === dedupedSorted) {
+          existing = true;
+          if (c.parent.length > deduped[i].parent.length) {
+            deduped[i] = c;
+          }
+          break;
+        }
+      }
+      if (!existing) deduped.push(c);
+    });
+
+    return deduped;
+  }
+
+  function showSmartMergeDialog(candidates) {
+    var listEl = document.getElementById('smartMergeList');
+    if (candidates.length === 0) {
+      listEl.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px;">未发现可合并的知识点 😌</p>';
+    } else {
+      var html = '';
+      candidates.forEach(function (c, i) {
+        var chipColor = ['#22c55e','#3b82f6','#f59e0b','#8b5cf6','#ec4899'][i % 5];
+        html += '<div style="margin-bottom:12px;padding:12px;background:rgba(255,255,255,.7);border-radius:10px;border:1px solid var(--green-100);">';
+        html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">📂 ' + escHtml(c.subject) + '</div>';
+        html += '<div style="font-weight:600;color:' + chipColor + ';margin-bottom:6px;">新父节点：' + escHtml(c.parent) + '</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        c.children.forEach(function (ch) {
+          html += '<span style="font-size:12px;background:rgba(0,0,0,.04);padding:3px 8px;border-radius:6px;">' + escHtml(ch) + '</span>';
+        });
+        html += '</div></div>';
+      });
+      listEl.innerHTML = html;
+    }
+    document.getElementById('smartMergeOverlay').style.display = 'flex';
+    document.getElementById('smartMergeOverlay')._candidates = candidates;
+  }
+
+  document.getElementById('btnSmartMerge').addEventListener('click', function () {
+    var data = loadData();
+    var candidates = findMergeCandidates(data);
+    showSmartMergeDialog(candidates);
+  });
+
+  document.getElementById('btnSmartMergeCancel').addEventListener('click', function () {
+    document.getElementById('smartMergeOverlay').style.display = 'none';
+  });
+
+  document.getElementById('btnSmartMergeApply').addEventListener('click', function () {
+    var candidates = document.getElementById('smartMergeOverlay')._candidates || [];
+    if (candidates.length === 0) return;
+    var data = loadData();
+    candidates.forEach(function (c) {
+      if (!data[c.subject]) return;
+      var childrenToMove = c.children.filter(function (ch) { return data[c.subject][ch]; });
+      if (childrenToMove.length < 2) return;
+      // 创建父节点
+      if (!data[c.subject][c.parent]) {
+        data[c.subject][c.parent] = { items: [], parentTopic: null };
+      }
+      // 移动子节点
+      childrenToMove.forEach(function (ch) {
+        data[c.subject][ch].parentTopic = c.parent;
+      });
+    });
+    saveData(data);
+    document.getElementById('smartMergeOverlay').style.display = 'none';
+    renderKnowledgeTree();
+    refreshMindmap();
+    showToast('已合并 ' + candidates.length + ' 组知识点', 'success');
+  });
+
   function renderMindmapSubjectBar() {
     var data = loadData();
-    var subjects = Object.keys(data);
+    var subjects = Object.keys(data).filter(function (s) { if (!s) return false; var t = (s + '').trim(); return t && t !== 'null' && t !== 'undefined'; });
     var bar = document.getElementById('mindmapSubjectBar');
     if (!bar) return;
     if (subjects.length === 0) { bar.style.display = 'none'; return; }
@@ -3033,11 +3360,11 @@
     var hasImage = !!imageBase64;
     var systemPrompt;
     if (hasImage && !text) {
-      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点。输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}。如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。';
+      systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点。输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}。如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式改为：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null,"suggestedSubjects":["分类1","分类2","分类3"]}';
     } else if (hasImage && text) {
-      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary","parentTopic"}。subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（如果是子概念就填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。';
+      systemPrompt = '你是一个知识提取器。用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，输出纯JSON格式{"subject","topic","summary","parentTopic"}。subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（如果是子概念就填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式增加字段 suggestedSubjects: ["分类1","分类2","分类3"]';
     } else {
-      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。输出纯JSON数组格式：[{subject,topic,summary,parentTopic}]。每个对象: subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（子概念才填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。';
+      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。输出纯JSON数组格式：[{subject,topic,summary,parentTopic}]。每个对象: subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（子概念才填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式增加字段 suggestedSubjects: ["分类1","分类2","分类3"]';
     }
 
     var userContent = buildContent(text, imageBase64);
@@ -3081,6 +3408,111 @@
       return raw;
     }
   }
+
+  /* 分类选择弹窗 */
+  var categoryResolve = null;
+  var categorySelectedSubject = null;
+
+  function showCategoryPicker(suggestedSubjects, topic, summary) {
+    return new Promise(function (resolve) {
+      categoryResolve = resolve;
+      categorySelectedSubject = null;
+      document.getElementById('categoryHint').textContent = '知识点：' + topic + ' — ' + (summary || '');
+      var optsEl = document.getElementById('categoryOptions');
+      var icons = ['📚', '🔬', '💡'];
+      var html = '';
+      for (var i = 0; i < suggestedSubjects.length; i++) {
+        html += '<button class="category-chip" data-subject="' + escHtml(suggestedSubjects[i]) + '"><span class="chip-icon">' + (icons[i] || '📌') + '</span>' + escHtml(suggestedSubjects[i]) + '</button>';
+      }
+      optsEl.innerHTML = html;
+      document.getElementById('categoryCustomInput').value = '';
+      document.getElementById('btnCategoryConfirm').disabled = true;
+
+      // 点击分类chip
+      optsEl.querySelectorAll('.category-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          optsEl.querySelectorAll('.category-chip').forEach(function (c) { c.classList.remove('selected'); });
+          chip.classList.add('selected');
+          categorySelectedSubject = chip.dataset.subject;
+          document.getElementById('btnCategoryConfirm').disabled = false;
+        });
+      });
+
+      // 自定义输入
+      var customInput = document.getElementById('categoryCustomInput');
+      customInput.addEventListener('input', function () {
+        if (this.value.trim()) {
+          optsEl.querySelectorAll('.category-chip').forEach(function (c) { c.classList.remove('selected'); });
+          categorySelectedSubject = null;
+          document.getElementById('btnCategoryConfirm').disabled = false;
+        } else if (!categorySelectedSubject) {
+          document.getElementById('btnCategoryConfirm').disabled = true;
+        }
+      });
+
+      document.getElementById('categoryModalOverlay').style.display = 'flex';
+    });
+  }
+
+  function hideCategoryPicker() {
+    document.getElementById('categoryModalOverlay').style.display = 'none';
+  }
+
+  function getCategoryPickerValue() {
+    if (categorySelectedSubject) return categorySelectedSubject;
+    var customVal = document.getElementById('categoryCustomInput').value.trim();
+    return customVal || null;
+  }
+
+  document.getElementById('btnCategoryConfirm').addEventListener('click', function () {
+    var val = getCategoryPickerValue();
+    if (!val) { showToast('请选择一个分类或输入自定义分类', 'error'); return; }
+    document.getElementById('categoryModalOverlay').style.display = 'none';
+    if (categoryResolve) { categoryResolve(val); categoryResolve = null; }
+  });
+
+  document.getElementById('btnCategorySkip').addEventListener('click', function () {
+    document.getElementById('categoryModalOverlay').style.display = 'none';
+    if (categoryResolve) { categoryResolve('__skip__'); categoryResolve = null; }
+  });
+
+  // 点击遮罩关闭分类弹窗
+  document.getElementById('categoryModalOverlay').addEventListener('click', function (e) {
+    if (e.target === this) {
+      document.getElementById('categoryModalOverlay').style.display = 'none';
+      if (categoryResolve) { categoryResolve(null); categoryResolve = null; }
+    }
+  });
+
+  /* 分类确认后的底部提示条 */
+  var currentCategorySubject = null;
+
+  function showCategoryToast(subject) {
+    if (!subject || subject === 'null' || subject === 'undefined') return;
+    currentCategorySubject = subject;
+    document.getElementById('categoryToastText').textContent = '✅ 已添加到「' + subject + '」';
+    document.getElementById('categoryToast').style.display = 'flex';
+  }
+
+  function hideCategoryToast() {
+    document.getElementById('categoryToast').style.display = 'none';
+    currentCategorySubject = null;
+  }
+
+  document.getElementById('btnCategoryContinue').addEventListener('click', function () {
+    hideCategoryToast();
+    // 聚焦输入框，预填分类上下文
+    userInput.focus();
+    userInput.placeholder = '继续记录「' + currentCategorySubject + '」下的内容...';
+    showToast('继续在「' + currentCategorySubject + '」下记录吧', 'success');
+  });
+
+  document.getElementById('btnCategorySwitch').addEventListener('click', function () {
+    hideCategoryToast();
+    userInput.focus();
+    userInput.placeholder = '粘贴或输入你想整理的知识内容...';
+    showToast('已切换，输入新内容即可', 'success');
+  });
 
   /* 知识点合并检查 */
   function checkTopicMerge(subject, topic) {
@@ -3212,7 +3644,6 @@
 
     if (!text && !hasImage) { showToast('请先输入学习内容或上传图片', 'error'); return; }
 
-    // 视觉模型检查
     if (hasImage) {
       var currentPlatform = getPlatformByUrl(getApiUrl());
       var currentModel = getModel();
@@ -3232,30 +3663,64 @@
         var parsed = JSON.parse(result);
         if (parsed.error) { showToast(parsed.error, 'error'); setLoading(false); return; }
 
-        // 兼容数组格式（纯文本模式）和单对象格式（图片模式）
         var items = Array.isArray(parsed) ? parsed : [parsed];
         var srcImage = savedImage || undefined;
         var savedText = text || '';
-        var firstImage = srcImage; // 只有第一项带图片
+        var firstImage = srcImage;
+
+        // 提取 suggestedSubjects（兼容无此字段的旧响应）
+        var suggestedSubjects = parsed.suggestedSubjects || [];
+        // 过滤掉 null/空值
+        suggestedSubjects = suggestedSubjects.filter(function (s) { return s && s !== 'null' && s !== 'undefined' && (s + '').trim() !== ''; });
+        if (suggestedSubjects.length === 0 && items.length > 0 && items[0].subject) {
+          suggestedSubjects = [items[0].subject];
+        }
+
+        // 确保有3个建议分类
+        while (suggestedSubjects.length < 3) {
+          var fallbacks = ['未分类', '通用知识', '学习笔记'];
+          var fb = fallbacks[suggestedSubjects.length];
+          if (suggestedSubjects.indexOf(fb) === -1) suggestedSubjects.push(fb);
+        }
+
+        // ★ 弹出分类选择框
+        var firstItem = items[0];
+        var chosenSubject = await showCategoryPicker(
+          suggestedSubjects,
+          firstItem.topic || '知识点',
+          firstItem.summary || ''
+        );
+
+        if (chosenSubject === '__skip__') chosenSubject = firstItem.subject || '未分类';
+
+        var primarySubject = chosenSubject;
 
         for (var idx = 0; idx < items.length; idx++) {
           var item = items[idx];
           if (item.error) continue;
+          var finalSubject = (idx === 0) ? primarySubject : (item.subject || primarySubject);
           var itemImage = (idx === 0) ? firstImage : undefined;
-          if (checkTopicMerge(item.subject, item.topic)) {
-            await showMergeDialog(item.subject, item.topic, item.summary, savedText, itemImage, item.parentTopic || null);
+          if (checkTopicMerge(finalSubject, item.topic)) {
+            await showMergeDialog(finalSubject, item.topic, item.summary, savedText, itemImage, item.parentTopic || null);
           } else {
-            await addKnowledge(savedText, item.subject, item.topic, item.summary, itemImage, item.parentTopic || null);
+            await addKnowledge(savedText, finalSubject, item.topic, item.summary, itemImage, item.parentTopic || null);
           }
         }
 
         userInput.value = '';
+        userInput.placeholder = '粘贴或输入你想整理的知识内容...';
         refreshMindmap();
         if (mindmapBody.classList.contains('collapsed')) {
           mindmapBody.classList.remove('collapsed');
           mindmapToggle.classList.remove('collapsed');
         }
         showToast('分析成功，知识库已更新！', 'success');
+
+        // ★ 显示继续/切换分类提示
+        if (primarySubject && primarySubject !== 'null' && primarySubject !== 'undefined') {
+          showCategoryToast(primarySubject);
+        }
+
       } catch (e) {
         console.error('API 解析失败，原始返回:', result);
         var preview = typeof result === 'string' ? result.substring(0, 200) : String(result);
