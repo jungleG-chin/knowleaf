@@ -3667,10 +3667,30 @@
 
   /* ===== 用户反馈 ===== */
   var FEEDBACK_KEY = 'knowleaf_feedbacks';
+  var FORMSPREE_URL = 'https://formspree.io/f/mpqnyobk';
   function getFeedbacks() {
     try { return JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]'); } catch(e) { return []; }
   }
   function saveFeedbacks(list) { localStorage.setItem(FEEDBACK_KEY, JSON.stringify(list)); }
+
+  function sendFeedbackEmail(type, text, contact) {
+    var typeLabel = { bug: 'Bug反馈', feat: '功能建议', ux: '使用体验', other: '其他' }[type] || type;
+    return fetch(FORMSPREE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: '[' + typeLabel + '] KnowLeaf 反馈',
+        message: '' +
+          '反馈类型：' + typeLabel + '\n' +
+          '────────────────\n' +
+          text + '\n' +
+          '────────────────\n' +
+          '联系方式：' + (contact || '未填写') + '\n' +
+          '时间：' + new Date().toLocaleString('zh-CN') + '\n' +
+          'UA：' + navigator.userAgent
+      })
+    });
+  }
 
   document.getElementById('btnOpenFeedback').addEventListener('click', function () {
     document.getElementById('feedbackText').value = '';
@@ -3689,12 +3709,30 @@
     var text = document.getElementById('feedbackText').value.trim();
     var contact = document.getElementById('feedbackContact').value.trim();
     if (text.length < 10) { showToast('反馈内容至少10个字', 'error'); return; }
+
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+
+    // 本地保存 + 发邮件
     var list = getFeedbacks();
     list.push({ type: type, text: text, contact: contact, time: new Date().toISOString() });
     saveFeedbacks(list);
-    document.getElementById('feedbackOverlay').style.display = 'none';
-    updateFeedbackLink();
-    showToast('感谢反馈！', 'success');
+
+    sendFeedbackEmail(type, text, contact).then(function () {
+      document.getElementById('feedbackText').value = '';
+      document.getElementById('feedbackContact').value = '';
+      document.getElementById('feedbackOverlay').style.display = 'none';
+      updateFeedbackLink();
+      showToast('感谢反馈！已发送到我邮箱 📬', 'success');
+    }).catch(function () {
+      document.getElementById('feedbackOverlay').style.display = 'none';
+      updateFeedbackLink();
+      showToast('反馈已保存，网络恢复后会自动发送 📤');
+    }).finally(function () {
+      btn.disabled = false;
+      btn.textContent = '提交';
+    });
   });
 
   function updateFeedbackLink() {
