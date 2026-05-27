@@ -292,6 +292,7 @@
   .knowledge-tree {
     max-height: 400px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 8px 14px;
   }
   .knowledge-tree .empty-state,

@@ -425,18 +425,16 @@
     });
     // P3: 条目点击打开详情弹窗
     knowledgeTree.querySelectorAll('.record-summary').forEach(function (el) {
-      var pending = false;
-      var handler = function (e) {
-        if (pending) return;
-        pending = true;
-        setTimeout(function () { pending = false; }, 300);
+      el.addEventListener('click', function (e) {
+        e.stopPropagation();
         var subject = this.getAttribute('data-subject');
         var topic = this.getAttribute('data-topic');
         var idx = parseInt(this.getAttribute('data-idx'));
         showRecordDetail(subject, topic, idx);
-      };
-      el.addEventListener('click', handler);
-      el.addEventListener('touchend', handler);
+      });
+      el.style.cursor = 'pointer';
+      el.style.webkitTapHighlightColor = 'transparent';
+      el.style.touchAction = 'manipulation';
     });
     // 异步加载 IndexedDB 中的图片缩略图（带重试，移动端适配）
     knowledgeTree.querySelectorAll('.lazy-thumb-placeholder').forEach(function (placeholder) {
