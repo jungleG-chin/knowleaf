@@ -3505,7 +3505,7 @@
   document.getElementById('categoryModalOverlay').addEventListener('click', function (e) {
     if (e.target === this) {
       document.getElementById('categoryModalOverlay').style.display = 'none';
-      if (categoryResolve) { categoryResolve(null); categoryResolve = null; }
+      if (categoryResolve) { categoryResolve('__skip__'); categoryResolve = null; }
     }
   });
 
@@ -3704,7 +3704,7 @@
           firstItem.summary || ''
         );
 
-        if (chosenSubject === '__skip__') chosenSubject = firstItem.subject || '未分类';
+        if (chosenSubject === '__skip__' || !chosenSubject) chosenSubject = firstItem.subject || '未分类';
 
         var primarySubject = chosenSubject;
 
