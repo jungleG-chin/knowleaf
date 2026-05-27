@@ -425,12 +425,18 @@
     });
     // P3: 条目点击打开详情弹窗
     knowledgeTree.querySelectorAll('.record-summary').forEach(function (el) {
-      el.addEventListener('click', function () {
+      var pending = false;
+      var handler = function (e) {
+        if (pending) return;
+        pending = true;
+        setTimeout(function () { pending = false; }, 300);
         var subject = this.getAttribute('data-subject');
         var topic = this.getAttribute('data-topic');
         var idx = parseInt(this.getAttribute('data-idx'));
         showRecordDetail(subject, topic, idx);
-      });
+      };
+      el.addEventListener('click', handler);
+      el.addEventListener('touchend', handler);
     });
     // 异步加载 IndexedDB 中的图片缩略图（带重试，移动端适配）
     knowledgeTree.querySelectorAll('.lazy-thumb-placeholder').forEach(function (placeholder) {
@@ -738,6 +744,10 @@
   }
 
   function showRecordDetail(subject, topic, index) {
+    // 防止重复弹窗
+    var existing = document.getElementById('recordDetailOverlay');
+    if (existing) existing.remove();
+
     var data = loadData();
     var rec = data[subject][topic].items[index];
 
