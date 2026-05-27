@@ -1,40 +1,33 @@
 # KnowLeaf 知叶
 
-AI 智能笔记 + 思维导图，输入知识自动归纳生成思维导图，支持艾宾浩斯复习。
+拍照/打字就能提取知识点，自动生成思维导图，按遗忘曲线复习 — 一个给大学生用的 AI 学习助手。
 
-## 支持平台
-- **手机端**（mobile-web/）：适配移动端浏览器，已部署 [GitHub Pages](https://jungleg-chin.github.io/knowleaf/mobile-web/)
-- **桌面端**（desktop/）：计划中
-- **小程序**（miniprogram/）：计划中
+👉 **在线使用**：[GitHub Pages](https://jungleg-chin.github.io/knowleaf/mobile-web/)
 
-## 技术栈
-- 前端：原生 HTML/CSS/JS（单文件），Markmap 思维导图
-- AI 后端：通义千问 API（qwen-vl-max / qwen-max）
-- 数据存储：localStorage（计划接入 LeanCloud 云存储 + 手机号登录）
+## 核心功能
+
+- **学习板块**：文字输入或拍照上传 → AI 提取知识点 → 自动生成思维导图
+- **复习板块**：艾宾浩斯遗忘曲线算法（1/2/4/7/15/30/90 天间隔），卡片式问答
+- **图片识别**：拍课件/笔记 → OCR 提取文字 → AI 归纳知识点
+- **数据管理**：导出 ZIP（JSON + 思维导图 PDF）、导入恢复、自动备份提醒
 
 ## AI 模型兼容性
 
-当前采用 OpenAI 兼容格式（`/v1/chat/completions`）调用各厂商 API，**视觉识别功能依赖模型自身能力**：
+| 模型 | 图片识别 | 纯文本 | 推荐 |
+|------|:---:|:---:|:---:|
+| 阿里 qwen-vl-max | ✅ | ✅ | ⭐ 推荐 |
+| 阿里 qwen-vl-plus | ✅ | ✅ | 轻量 |
+| 阿里 qwen-max | ❌ | ✅ | - |
+| DeepSeek deepseek-chat | ❌ | ✅ | - |
+| GPT-4o / GPT-4o-mini | ✅ | ✅ | - |
 
-| 模型 | 视觉识别（图片） | 纯文本 | 说明 |
-|------|:---:|:---:|------|
-| **阿里云 qwen-vl-max** | ✅ | ✅ | 推荐，支持 |
-| **阿里云 qwen-vl-plus** | ✅ | ✅ | 轻量版 |
-| **阿里云 qwen-max** | ❌ | ✅ | 纯文本，不支持图片 |
-| **DeepSeek deepseek-chat** | ❌ | ✅ | 不支持，传图会报错 `unknown variant 'image_url'` |
-| **SiliconFlow Qwen/Qwen2-VL** | ✅ | ✅ | 走标准格式可选 |
-| **GPT-4o / GPT-4o-mini** | ✅ | ✅ | 原生支持 |
-| **Claude (Anthropic)** | ❌ | ✅ | 非 OpenAI 格式，需特殊适配 |
+## 快速开始
 
-> 如果选了不支持图片的模型但上传了图片，会直接报错。**建议使用阿里云 qwen-vl-max 或 qwen-vl-plus**。
+1. 获取 API Key：[阿里云百炼](https://dashscope.aliyun.com/)
+2. 打开 [KnowLeaf](https://jungleg-chin.github.io/knowleaf/mobile-web/)
+3. 在「我的 → API 配置」填入 Key，选择「阿里云」平台
+4. 开始拍照或输入笔记
 
-## 安装使用
-1. 克隆项目
-2. 访问 [阿里云百炼](https://dashscope.aliyun.com/) 获取 API Key
-3. 在「设置」中填入 API Key，选择「阿里云」提供商
-4. 打开 `mobile-web/index.html` 即可使用
+## 技术栈
 
-## 待办
-- [ ] LeanCloud 云存储 + 手机号登录（数据跨设备同步）
-- [ ] 桌面端开发
-- [ ] 小程序版本
+纯 HTML/CSS/JS 单文件应用 · Markmap 思维导图 · IndexedDB 图片存储 · 通义千问 API · jsPDF + JSZip 导出
