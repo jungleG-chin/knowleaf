@@ -1269,6 +1269,62 @@
   .btn-wiki-forgot { background: #fee2e2; color: #dc2626; }
   .btn-wiki-remember { background: #dcfce7; color: #16a34a; }
   .btn-wiki-close { display: block; width: 100%; margin-top: 8px; padding: 12px 0; background: none; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; color: #64748b; cursor: pointer; font-family: inherit; }
+
+  /* 筛选面板 */
+  .filter-chip {
+    padding: 3px 8px;
+    border-radius: 14px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--green-200);
+    background: rgba(255,255,255,.6);
+    color: var(--green-700);
+    transition: all .15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .filter-chip:active { opacity: .8; }
+  .filter-chip.active {
+    background: var(--green-500);
+    color: #fff;
+    border-color: var(--green-500);
+  }
+  .filter-chip-tag {
+    padding: 3px 8px;
+    border-radius: 14px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    background: rgba(255,255,255,.6);
+    color: #475569;
+    transition: all .15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .filter-chip-tag:active { opacity: .8; }
+  .filter-chip-tag.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+  }
+
+  /* 知识点详情弹窗 */
+  .record-detail-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 1000;
+    display: flex; align-items: flex-end;
+    animation: fadeIn .2s;
+  }
+  .record-detail-card {
+    background: #fff;
+    width: 100%; max-height: 80vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 32px;
+    overflow-y: auto;
+    animation: slideUp .3s ease;
+    -webkit-overflow-scrolling: touch;
+  }
 </style>
 </head>
 <body>
@@ -1337,6 +1393,42 @@
     <div class="search-bar" style="position:relative;">
       <input class="search-input" id="searchInput" placeholder="搜索学科、知识点或内容..." autocomplete="off">
       <button class="btn-search" id="btnSearch" style="padding:8px 16px;border:none;border-radius:20px;background:var(--green-500);color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;min-height:40px;font-family:inherit;flex-shrink:0;">搜索</button>
+    </div>
+    <!-- 筛选面板（默认折叠，有筛选条件时展开） -->
+    <div id="filterPanel" style="display:none;padding:8px 12px;background:rgba(255,255,255,.5);border-radius:8px;margin:0 14px 8px;border:1px solid var(--green-100);">
+      <!-- nodeType 筛选 -->
+      <div style="margin-bottom:6px;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px;">📂 知识类型</div>
+        <div id="filterNodeTypes" style="display:flex;flex-wrap:wrap;gap:4px;">
+          <span class="filter-chip filter-chip-type" data-type="concept" data-active="false">💡 概念</span>
+          <span class="filter-chip filter-chip-type" data-type="definition" data-active="false">📋 定义</span>
+          <span class="filter-chip filter-chip-type" data-type="theorem" data-active="false">📐 定理</span>
+          <span class="filter-chip filter-chip-type" data-type="formula" data-active="false">🧮 公式</span>
+          <span class="filter-chip filter-chip-type" data-type="example" data-active="false">📝 示例</span>
+          <span class="filter-chip filter-chip-type" data-type="exercise" data-active="false">✏️ 习题</span>
+        </div>
+      </div>
+      <!-- tags 筛选 -->
+      <div style="margin-bottom:6px;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px;">🏷️ 标签</div>
+        <div id="filterTags" style="display:flex;flex-wrap:wrap;gap:4px;">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      <!-- importance 筛选 -->
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;color:#64748b;">⭐ 最低重要性</span>
+        <select id="filterImportance" style="padding:4px 8px;border:1px solid var(--green-300);border-radius:6px;font-size:13px;background:rgba(255,255,255,.8);color:#334155;">
+          <option value="0">不限</option>
+          <option value="5">⭐⭐⭐⭐⭐ 必考核心</option>
+          <option value="4">⭐⭐⭐⭐ 重要基础</option>
+          <option value="3">⭐⭐⭐ 一般</option>
+          <option value="2">⭐⭐ 了解即可</option>
+          <option value="1">⭐ 扩展</option>
+        </select>
+      </div>
+      <!-- 清除筛选按钮 -->
+      <button id="btnClearFilter" style="display:none;margin-top:6px;padding:4px 12px;border:1px solid var(--green-300);border-radius:6px;background:rgba(255,255,255,.6);color:var(--green-700);font-size:12px;cursor:pointer;">清除所有筛选</button>
     </div>
     <div class="knowledge-tree" id="knowledgeTree">
       <div class="empty-state">还没有知识条目，开始输入吧</div>
@@ -2117,7 +2209,7 @@
     IMG_DB.saveDataBackup(data);
   }
 
-  async function addKnowledge(text, subject, topic, summary, imageBase64, parentTopic) {
+  async function addKnowledge(text, subject, topic, summary, imageBase64, parentTopic, meta) {
     // 拒绝 null/undefined/空字符串的 subject
     if (!subject || subject === 'null' || subject === 'undefined' || (typeof subject === 'string' && subject.trim() === '')) {
       console.warn('addKnowledge: 拒绝无效 subject:', subject);
@@ -2154,7 +2246,14 @@
       reviewCount: 0, correctCount: 0,
       lastReviewed: null, nextReview: now.toISOString(),
       interval: 1, status: 'learning',
-      imageId: imageId
+      imageId: imageId,
+      // === Phase 1 新增字段（向下兼容，有则存） ===
+      nodeType: (meta && meta.nodeType) || 'concept',
+      tags: (meta && Array.isArray(meta.tags)) ? meta.tags : [],
+      importance: (meta && typeof meta.importance === 'number' && meta.importance >= 1 && meta.importance <= 5)
+        ? meta.importance : 3,
+      // P3: 双向引用
+      references: (meta && Array.isArray(meta.references)) ? meta.references : []
     });
     saveData(data);
     renderKnowledgeTree();
@@ -2169,6 +2268,26 @@
     if (rec && rec.imageId) {
       try { await IMG_DB.del(rec.imageId); } catch (e) {}
     }
+
+    // P3: 清理所有引用此条目的 references
+    Object.keys(data).forEach(function (s) {
+      Object.keys(data[s]).forEach(function (t) {
+        (data[s][t].items || []).forEach(function (r) {
+          if (r.references && r.references.length > 0) {
+            r.references = r.references.filter(function (ref) {
+              return !(ref.targetSubject === subject && ref.targetTopic === topic && ref.targetIndex === index);
+            });
+            // 调整大于此 index 的引用
+            r.references.forEach(function (ref) {
+              if (ref.targetSubject === subject && ref.targetTopic === topic && ref.targetIndex > index) {
+                ref.targetIndex--;
+              }
+            });
+          }
+        });
+      });
+    });
+
     items.splice(index, 1);
     if (items.length === 0) delete data[subject][topic];
     if (Object.keys(data[subject]).length === 0) delete data[subject];
@@ -2458,6 +2577,11 @@
   var currentSubjectFilter = '';
   var highlightRecord = null;
 
+  /* P2b 筛选状态 */
+  var filterNodeTypes = [];     // 选中的 nodeType 列表
+  var filterTags = [];          // 选中的标签列表
+  var filterMinImportance = 0;  // 最低重要性（0=不限）
+
   function getSearchKeywords() {
     if (!currentFilter) return [];
     var q = currentFilter.toLowerCase();
@@ -2468,13 +2592,122 @@
 
   function matchesFilter(subj, topic, rec) {
     if (currentSubjectFilter && subj !== currentSubjectFilter) return false;
-    if (!currentFilter) return true;
-    var keywords = getSearchKeywords();
-    if (keywords.length === 0) return true;
-    var haystack = (subj + ' ' + topic + ' ' + (rec.summary||'') + ' ' + (rec.text||'')).toLowerCase();
-    return keywords.some(function(kw) {
-      return haystack.indexOf(kw) !== -1;
+
+    // 文字搜索
+    if (currentFilter) {
+      var keywords = getSearchKeywords();
+      if (keywords.length > 0) {
+        var haystack = (subj + ' ' + topic + ' ' + (rec.summary||'') + ' ' + (rec.text||'')).toLowerCase();
+        var textMatch = keywords.some(function(kw) {
+          return haystack.indexOf(kw) !== -1;
+        });
+        if (!textMatch) return false;
+      }
+    }
+
+    // P2b: nodeType 筛选（多选 OR）
+    if (filterNodeTypes.length > 0) {
+      var recType = rec.nodeType || 'concept';
+      if (filterNodeTypes.indexOf(recType) === -1) return false;
+    }
+
+    // P2b: tags 筛选（多选 AND）
+    if (filterTags.length > 0) {
+      var recTags = Array.isArray(rec.tags) ? rec.tags : [];
+      var allMatch = filterTags.every(function (ft) {
+        return recTags.indexOf(ft) >= 0;
+      });
+      if (!allMatch) return false;
+    }
+
+    // P2b: importance 筛选（>= min）
+    if (filterMinImportance > 0) {
+      var imp = (typeof rec.importance === 'number') ? rec.importance : 3;
+      if (imp < filterMinImportance) return false;
+    }
+
+    return true;
+  }
+
+  // 从已有数据中收集所有标签
+  function collectAllTags() {
+    var data = loadData();
+    var tagSet = {};
+    Object.keys(data).forEach(function (s) {
+      Object.keys(data[s]).forEach(function (t) {
+        var items = data[s][t].items || [];
+        items.forEach(function (r) {
+          if (Array.isArray(r.tags)) {
+            r.tags.forEach(function (tag) { tagSet[tag] = true; });
+          }
+        });
+      });
     });
+    return Object.keys(tagSet).sort();
+  }
+
+  // 渲染标签筛选芯片
+  function renderFilterTags() {
+    var container = document.getElementById('filterTags');
+    if (!container) return;
+    var allTags = collectAllTags();
+    if (allTags.length === 0) {
+      container.innerHTML = '<span style="font-size:11px;color:#94a3b8;">暂无标签</span>';
+      return;
+    }
+    var html = '';
+    allTags.forEach(function (tag) {
+      var active = filterTags.indexOf(tag) >= 0;
+      html += '<span class="filter-chip-tag' + (active ? ' active' : '') + '" data-tag="' + escHtml(tag) + '" data-active="' + active + '">' + escHtml(tag) + '</span>';
+    });
+    container.innerHTML = html;
+  }
+
+  // 检查是否有任何筛选条件
+  function hasAnyFilter() {
+    return filterNodeTypes.length > 0 || filterTags.length > 0 || filterMinImportance > 0;
+  }
+
+  // 更新筛选 UI 状态
+  function updateFilterUI() {
+    var panel = document.getElementById('filterPanel');
+    if (!panel) return;
+
+    // 显示/隐藏面板：始终显示面板以便操作
+    panel.style.display = 'block';
+
+    // 更新 nodeType 芯片状态
+    var typeChips = document.querySelectorAll('.filter-chip-type');
+    typeChips.forEach(function (chip) {
+      var type = chip.getAttribute('data-type');
+      if (filterNodeTypes.indexOf(type) >= 0) {
+        chip.classList.add('active');
+        chip.setAttribute('data-active', 'true');
+      } else {
+        chip.classList.remove('active');
+        chip.setAttribute('data-active', 'false');
+      }
+    });
+
+    // 更新标签芯片状态
+    var tagChips = document.querySelectorAll('.filter-chip-tag');
+    tagChips.forEach(function (chip) {
+      var tag = chip.getAttribute('data-tag');
+      if (filterTags.indexOf(tag) >= 0) {
+        chip.classList.add('active');
+        chip.setAttribute('data-active', 'true');
+      } else {
+        chip.classList.remove('active');
+        chip.setAttribute('data-active', 'false');
+      }
+    });
+
+    // 清除按钮
+    var btnClear = document.getElementById('btnClearFilter');
+    if (btnClear) btnClear.style.display = hasAnyFilter() ? 'inline-block' : 'none';
+
+    // 刷新标签列表（新增知识点后标签池可能变）
+    renderFilterTags();
   }
 
   function highlightText(text, keywords) {
@@ -2490,6 +2723,8 @@
 
   /* 渲染知识库 */
   function renderKnowledgeTree() {
+    // 初始化筛选面板（每次渲染都刷新标签池）
+    updateFilterUI();
     var data = loadData();
     var keywords = getSearchKeywords();
     var subjects = Object.keys(data).filter(function (s) { if (!s) return false; var t = (s + '').trim(); return t && t !== 'null' && t !== 'undefined'; });
@@ -2728,43 +2963,13 @@
         }
       });
     });
+    // P3: 条目点击打开详情弹窗
     knowledgeTree.querySelectorAll('.record-summary').forEach(function (el) {
       el.addEventListener('click', function () {
-        var subj = this.getAttribute('data-subject'), top = this.getAttribute('data-topic'), idx = this.getAttribute('data-idx');
-        var textEl = document.getElementById('recText-' + escHtml(subj) + '-' + escHtml(top) + '-' + idx);
-        if (textEl) {
-          var isNowVisible = !textEl.classList.contains('show');
-          textEl.classList.toggle('show');
-          // 推荐栏
-          var recContainer = textEl.parentNode.querySelector('.recommendations');
-          if (isNowVisible) {
-            if (recContainer) recContainer.remove();
-            var recs = getRelatedRecommendations(subj, top);
-            if (recs.length > 0) {
-              var recHtml = '<div class="recommendations"><div style="font-weight:600;color:var(--green-700);margin-bottom:4px;">📖 推荐复习</div>';
-              recs.forEach(function (r) {
-                recHtml += '<div class="rec-item" data-subject="' + escHtml(r.subj) + '" data-topic="' + escHtml(r.topic) + '" data-idx="' + r.idx + '">→ ' + escHtml(r.topic) + '：' + escHtml(r.rec.summary) + '</div>';
-              });
-              recHtml += '</div>';
-              textEl.insertAdjacentHTML('afterend', recHtml);
-              // 推荐项点击：跳转到对应记录的展开
-              setTimeout(function () {
-                textEl.parentNode.querySelectorAll('.rec-item').forEach(function (recEl) {
-                  recEl.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var rSubj = this.getAttribute('data-subject');
-                    var rTopic = this.getAttribute('data-topic');
-                    // 标记高亮记录
-                    highlightRecord = { subject: rSubj, topic: rTopic };
-                    renderKnowledgeTree();
-                  });
-                });
-              }, 50);
-            }
-          } else {
-            if (recContainer) recContainer.remove();
-          }
-        }
+        var subject = this.getAttribute('data-subject');
+        var topic = this.getAttribute('data-topic');
+        var idx = parseInt(this.getAttribute('data-idx'));
+        showRecordDetail(subject, topic, idx);
       });
     });
     // 异步加载 IndexedDB 中的图片缩略图（带重试，移动端适配）
@@ -2888,6 +3093,375 @@
   }
 
   /* Markmap */
+  function getNodeTypeIcon(nodeType) {
+    var icons = {
+      'concept':    '\u{1F4A1}',   // 核心概念
+      'definition': '\u{1F4CB}',   // 定义
+      'theorem':    '\u{1F4D0}',   // 定理/定律
+      'formula':    '\u{1F9EE}',   // 公式
+      'example':    '\u{1F4DD}',   // 例题/示例
+      'exercise':   '✏️',   // 习题
+      'note':       '\u{1F4CC}'    // 笔记
+    };
+    return icons[nodeType] || '\u{1F4A1}';  // 默认 concept 图标
+  }
+
+  // ===== P3: TF-IDF 中文简单实现 =====
+
+  // 简易中文分词：按字符 bigram 切分
+  function simpleTokenize(text) {
+    if (!text) return [];
+    // 移除标点，保留中文/英文/数字
+    var cleaned = text.replace(/[^一-龥a-zA-Z0-9]/g, ' ');
+    var words = cleaned.split(/\s+/).filter(function (w) { return w.length > 0; });
+    var tokens = [];
+    words.forEach(function (w) {
+      if (/[一-龥]/.test(w)) {
+        // 中文：按 bigram 切分
+        for (var i = 0; i < w.length - 1; i++) {
+          tokens.push(w.substring(i, i + 2));
+        }
+        // 也保留单字
+        for (var j = 0; j < w.length; j++) {
+          tokens.push(w[j]);
+        }
+      } else {
+        // 英文/数字：直接作为 token（转小写）
+        tokens.push(w.toLowerCase());
+      }
+    });
+    return tokens;
+  }
+
+  // 计算 TF（词频）
+  function computeTF(tokens) {
+    var tf = {};
+    tokens.forEach(function (t) {
+      tf[t] = (tf[t] || 0) + 1;
+    });
+    var total = tokens.length || 1;
+    Object.keys(tf).forEach(function (t) {
+      tf[t] = tf[t] / total;
+    });
+    return tf;
+  }
+
+  // 计算 IDF（逆文档频率）
+  function computeIDF(allDocs) {
+    var df = {};
+    var N = allDocs.length;
+    allDocs.forEach(function (doc) {
+      var seen = {};
+      doc.forEach(function (token) {
+        if (!seen[token]) {
+          df[token] = (df[token] || 0) + 1;
+          seen[token] = true;
+        }
+      });
+    });
+    var idf = {};
+    Object.keys(df).forEach(function (t) {
+      idf[t] = Math.log((N + 1) / (df[t] + 1)) + 1;
+    });
+    return idf;
+  }
+
+  // TF-IDF 向量
+  function tfidfVectorize(tokens, idf) {
+    var tf = computeTF(tokens);
+    var vec = {};
+    Object.keys(tf).forEach(function (t) {
+      vec[t] = tf[t] * (idf[t] || 0);
+    });
+    return vec;
+  }
+
+  // 余弦相似度
+  function cosineSimilarity(vecA, vecB) {
+    var dot = 0, normA = 0, normB = 0;
+    var allKeys = {};
+    Object.keys(vecA).forEach(function (k) { allKeys[k] = true; });
+    Object.keys(vecB).forEach(function (k) { allKeys[k] = true; });
+    Object.keys(allKeys).forEach(function (k) {
+      var a = vecA[k] || 0;
+      var b = vecB[k] || 0;
+      dot += a * b;
+      normA += a * a;
+      normB += b * b;
+    });
+    if (normA === 0 || normB === 0) return 0;
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+
+  // 收集所有知识条目为文档
+  function collectAllRecords(data) {
+    var records = [];
+    Object.keys(data).forEach(function (s) {
+      Object.keys(data[s]).forEach(function (t) {
+        (data[s][t].items || []).forEach(function (r, i) {
+          records.push({
+            subject: s, topic: t, index: i,
+            text: (r.summary || '') + ' ' + (r.tags || []).join(' ')
+          });
+        });
+      });
+    });
+    return records;
+  }
+
+  // 查找与目标最相关的 topK 个知识点
+  function findRelatedNodes(data, targetSubject, targetTopic, targetIndex, topK, threshold) {
+    topK = topK || 5;
+    threshold = threshold || 0.15;
+
+    var allRecords = collectAllRecords(data);
+    if (allRecords.length <= 1) return [];
+
+    // 找到目标记录
+    var targetRec = null;
+    var targetTokens = null;
+    for (var i = 0; i < allRecords.length; i++) {
+      if (allRecords[i].subject === targetSubject &&
+          allRecords[i].topic === targetTopic &&
+          allRecords[i].index === targetIndex) {
+        targetRec = allRecords[i];
+        targetTokens = simpleTokenize(targetRec.text);
+        break;
+      }
+    }
+    if (!targetRec) return [];
+
+    // 对所有文档分词
+    var allTokens = allRecords.map(function (r) { return simpleTokenize(r.text); });
+
+    // 计算 IDF
+    var idf = computeIDF(allTokens);
+
+    // 计算目标向量
+    var targetVec = tfidfVectorize(targetTokens, idf);
+
+    // 计算每个文档的相似度
+    var scores = allRecords.map(function (r, i) {
+      if (r.subject === targetSubject && r.topic === targetTopic && r.index === targetIndex) {
+        return null;
+      }
+      var vec = tfidfVectorize(allTokens[i], idf);
+      return {
+        subject: r.subject,
+        topic: r.topic,
+        index: r.index,
+        summary: data[r.subject][r.topic].items[r.index].summary,
+        score: cosineSimilarity(targetVec, vec)
+      };
+    });
+
+    // 过滤、排序、取 topK
+    return scores
+      .filter(function (s) { return s !== null && s.score >= threshold; })
+      .sort(function (a, b) { return b.score - a.score; })
+      .slice(0, topK);
+  }
+
+  // ===== P3: 知识点详情弹窗 =====
+
+  // 辅助：根据 ref 对象获取记录
+  function getRecordByRef(ref) {
+    var data = loadData();
+    var topicData = data[ref.targetSubject] && data[ref.targetSubject][ref.targetTopic];
+    if (!topicData || !topicData.items) return null;
+    return topicData.items[ref.targetIndex] || null;
+  }
+
+  // 辅助：根据 subject/topic/index 获取记录
+  function getRecordByKey(subject, topic, index) {
+    var data = loadData();
+    var topicData = data[subject] && data[subject][topic];
+    if (!topicData || !topicData.items) return null;
+    return topicData.items[index] || null;
+  }
+
+  function showRecordDetail(subject, topic, index) {
+    var data = loadData();
+    var rec = data[subject][topic].items[index];
+
+    // 获取该条目的所有引用
+    var refs = (rec.references || []);
+
+    // 获取"谁引用了我"（反向链接）
+    var backlinks = [];
+    Object.keys(data).forEach(function (s) {
+      Object.keys(data[s]).forEach(function (t) {
+        (data[s][t].items || []).forEach(function (r, i) {
+          (r.references || []).forEach(function (ref) {
+            if (ref.targetSubject === subject && ref.targetTopic === topic && ref.targetIndex === index) {
+              backlinks.push({
+                fromSubject: s, fromTopic: t, fromIndex: i,
+                fromSummary: r.summary, relationType: ref.relationType, note: ref.note
+              });
+            }
+          });
+        });
+      });
+    });
+
+    // 构建弹窗 HTML
+    var html = '<div class="record-detail-overlay" id="recordDetailOverlay">';
+    html += '<div class="record-detail-card">';
+
+    // 关闭按钮
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+    html += '<span style="font-size:12px;color:var(--green-600);">' + getNodeTypeIcon(rec.nodeType) + ' ' + escHtml(rec.nodeType || 'concept') + '</span>';
+    html += '<button class="btn-detail-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;min-width:44px;min-height:44px;">&times;</button>';
+    html += '</div>';
+
+    // 标题
+    html += '<h3 style="font-size:16px;color:#1e293b;margin-bottom:8px;">' + escHtml(rec.summary) + '</h3>';
+    html += '<div style="font-size:13px;color:#64748b;margin-bottom:4px;">' + escHtml(subject) + ' &gt; ' + escHtml(topic) + '</div>';
+
+    // tags
+    html += '<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:4px;">';
+    (rec.tags || []).forEach(function (t) {
+      html += '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.1);color:var(--green-700);">' + escHtml(t) + '</span>';
+    });
+    html += '</div>';
+
+    // importance
+    var stars = '';
+    for (var s = 0; s < (rec.importance || 3); s++) stars += '⭐';
+    html += '<div style="font-size:12px;color:#64748b;margin-bottom:8px;">重要性: ' + stars + ' (' + (rec.importance || 3) + '/5)</div>';
+
+    // 详细内容
+    html += '<div style="font-size:14px;color:#334155;line-height:1.7;margin:12px 0;padding:12px;background:rgba(255,255,255,.5);border-radius:8px;max-height:200px;overflow-y:auto;">';
+    html += escHtml(rec.text || rec.summary);
+    html += '</div>';
+
+    // 图片
+    if (rec.imageId || rec.image) {
+      html += '<div style="margin:8px 0;">';
+      var imgSrc = rec.image || '';
+      if (rec.imageId && !imgSrc) {
+        html += '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:13px;">📷 含图片（点击加载）</div>';
+      } else if (imgSrc) {
+        html += '<img src="' + escHtml(imgSrc) + '" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid var(--green-100);">';
+      }
+      html += '</div>';
+    }
+
+    // === 正向引用 ===
+    html += '<div style="margin-top:12px;">';
+    html += '<div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">🔗 引用了以下知识点 (' + refs.length + ')</div>';
+    if (refs.length === 0) {
+      html += '<div style="font-size:12px;color:#94a3b8;">暂无引用</div>';
+    } else {
+      refs.forEach(function (ref, ri) {
+        var target = getRecordByRef(ref);
+        html += '<div style="padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,.5);border-radius:6px;font-size:13px;display:flex;align-items:center;gap:6px;">';
+        html += '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#e0e7ff;color:#4f46e5;">' + escHtml(ref.relationType || 'extension') + '</span>';
+        html += '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (target ? escHtml(target.summary) : escHtml(ref.targetSubject + ' > ' + ref.targetTopic)) + '</span>';
+        html += '<button class="btn-remove-ref" data-ref-idx="' + ri + '" style="margin-left:auto;background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;min-width:36px;min-height:36px;">&times;</button>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    // === 反向链接 ===
+    html += '<div style="margin-top:12px;">';
+    html += '<div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">📌 被以下知识点引用 (' + backlinks.length + ')</div>';
+    if (backlinks.length === 0) {
+      html += '<div style="font-size:12px;color:#94a3b8;">暂无反向链接</div>';
+    } else {
+      backlinks.forEach(function (bl) {
+        html += '<div style="padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,.5);border-radius:6px;font-size:13px;display:flex;align-items:center;gap:6px;">';
+        html += '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fef3c7;color:#b45309;">' + escHtml(bl.relationType || 'extension') + '</span>';
+        html += '<span>' + escHtml(bl.fromSummary) + '</span>';
+        html += '<span style="font-size:10px;color:#94a3b8;margin-left:auto;">' + escHtml(bl.fromSubject) + ' > ' + escHtml(bl.fromTopic) + '</span>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    // === 推荐关联（TF-IDF） ===
+    html += '<div style="margin-top:12px;">';
+    html += '<div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">💡 可能相关</div>';
+    html += '<div id="suggestedRefs" style="max-height:150px;overflow-y:auto;">';
+    html += '<button id="btnSuggestRefs" style="padding:6px 14px;border:1px solid var(--green-300);border-radius:6px;background:rgba(255,255,255,.6);color:var(--green-700);font-size:12px;cursor:pointer;">🔍 查找相关知识点</button>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '</div></div>';  // card + overlay
+
+    // 插入到 body
+    var overlay = document.createElement('div');
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay.firstElementChild);
+
+    // === 事件绑定 ===
+
+    // 关闭弹窗
+    document.querySelector('.btn-detail-close').addEventListener('click', function () {
+      document.getElementById('recordDetailOverlay').remove();
+    });
+    document.getElementById('recordDetailOverlay').addEventListener('click', function (e) {
+      if (e.target === this) this.remove();
+    });
+
+    // 删除引用
+    document.querySelectorAll('.btn-remove-ref').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var ri = parseInt(this.getAttribute('data-ref-idx'));
+        rec.references.splice(ri, 1);
+        saveData(data);
+        document.getElementById('recordDetailOverlay').remove();
+        showRecordDetail(subject, topic, index);
+      });
+    });
+
+    // 推荐关联按钮
+    document.getElementById('btnSuggestRefs').addEventListener('click', function () {
+      var suggestions = findRelatedNodes(data, subject, topic, index);
+      var sugHtml = '';
+      if (suggestions.length === 0) {
+        sugHtml = '<div style="font-size:12px;color:#94a3b8;padding:8px 0;">未找到相关知识点（知识库可能太小）</div>';
+      } else {
+        suggestions.forEach(function (sug) {
+          sugHtml += '<div style="padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,.5);border-radius:6px;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:space-between;">';
+          sugHtml += '<div style="min-width:0;flex:1;"><span style="font-size:10px;color:#64748b;">' + escHtml(sug.subject) + ' &gt; ' + escHtml(sug.topic) + '</span><br>' + escHtml(sug.summary) + '</div>';
+          sugHtml += '<button class="btn-add-ref" data-target-subj="' + escHtml(sug.subject) + '" data-target-topic="' + escHtml(sug.topic) + '" data-target-idx="' + sug.index + '" style="padding:3px 8px;border:1px solid var(--green-400);border-radius:4px;background:rgba(34,197,94,.1);color:var(--green-700);font-size:11px;cursor:pointer;white-space:nowrap;">🔗 关联</button>';
+          sugHtml += '</div>';
+        });
+      }
+      document.getElementById('suggestedRefs').innerHTML = sugHtml;
+
+      // 绑定关联按钮
+      document.querySelectorAll('.btn-add-ref').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var targetSubj = this.getAttribute('data-target-subj');
+          var targetTopic = this.getAttribute('data-target-topic');
+          var targetIdx = parseInt(this.getAttribute('data-target-idx'));
+
+          // 检查是否已存在引用
+          var exists = rec.references.some(function (r) {
+            return r.targetSubject === targetSubj && r.targetTopic === targetTopic && r.targetIndex === targetIdx;
+          });
+          if (exists) { showToast('已存在该关联', 'error'); return; }
+
+          rec.references.push({
+            targetSubject: targetSubj,
+            targetTopic: targetTopic,
+            targetIndex: targetIdx,
+            relationType: 'extension',
+            note: '',
+            createdAt: new Date().toISOString()
+          });
+          saveData(data);
+          document.getElementById('recordDetailOverlay').remove();
+          showRecordDetail(subject, topic, index);
+          showToast('关联已添加', 'success');
+        });
+      });
+    });
+  }
+
   function buildMarkdown(data, expandSubject) {
     var lines = [];
     var allSubjects = Object.keys(data).filter(function (s) { if (!s) return false; var t = (s + '').trim(); return t && t !== 'null' && t !== 'undefined'; });
@@ -2932,7 +3506,8 @@
           lines.push('### ' + t);
           var items = data[s][t].items || [];
           items.forEach(function (r) {
-            lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
+            var icon = getNodeTypeIcon(r.nodeType);
+            lines.push('- ' + icon + ' ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
           });
           children.forEach(function (ct) {
             if (data[s][ct].parentTopic === t) {
@@ -2940,7 +3515,8 @@
               var citems = data[s][ct].items || [];
               if (citems.length > 0) {
                 citems.forEach(function (r) {
-                  lines.push('- ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
+                  var icon = getNodeTypeIcon(r.nodeType);
+                  lines.push('- ' + icon + ' ' + r.summary + ((r.imageId || r.image) ? ' 📷' : ''));
                 });
               } else {
                 lines.push('- （待添加内容）');
@@ -2954,7 +3530,10 @@
           if (!data[s][p]) {
             lines.push('### ' + ct);
             var items = data[s][ct].items || [];
-            items.forEach(function (r) { lines.push('- ' + r.summary); });
+            items.forEach(function (r) {
+              var icon = getNodeTypeIcon(r.nodeType);
+              lines.push('- ' + icon + ' ' + r.summary);
+            });
           }
         });
       }
@@ -3291,6 +3870,64 @@
     }
   });
 
+  // === P2b 筛选面板事件 ===
+
+  // nodeType 筛选芯片点击
+  var filterNodeTypesEl = document.getElementById('filterNodeTypes');
+  if (filterNodeTypesEl) {
+    filterNodeTypesEl.addEventListener('click', function (e) {
+      var chip = e.target.closest('.filter-chip-type');
+      if (!chip) return;
+      var type = chip.getAttribute('data-type');
+      var idx = filterNodeTypes.indexOf(type);
+      if (idx >= 0) {
+        filterNodeTypes.splice(idx, 1);
+      } else {
+        filterNodeTypes.push(type);
+      }
+      renderKnowledgeTree();
+    });
+  }
+
+  // 标签筛选芯片点击（事件委托）
+  var filterTagsEl = document.getElementById('filterTags');
+  if (filterTagsEl) {
+    filterTagsEl.addEventListener('click', function (e) {
+      var chip = e.target.closest('.filter-chip-tag');
+      if (!chip) return;
+      var tag = chip.getAttribute('data-tag');
+      var idx = filterTags.indexOf(tag);
+      if (idx >= 0) {
+        filterTags.splice(idx, 1);
+      } else {
+        filterTags.push(tag);
+      }
+      renderKnowledgeTree();
+    });
+  }
+
+  // 重要性下拉
+  var filterImportanceEl = document.getElementById('filterImportance');
+  if (filterImportanceEl) {
+    filterImportanceEl.addEventListener('change', function () {
+      filterMinImportance = parseInt(this.value) || 0;
+      renderKnowledgeTree();
+    });
+  }
+
+  // 清除筛选
+  var btnClearFilterEl = document.getElementById('btnClearFilter');
+  if (btnClearFilterEl) {
+    btnClearFilterEl.addEventListener('click', function () {
+      filterNodeTypes = [];
+      filterTags = [];
+      filterMinImportance = 0;
+      var impSelect = document.getElementById('filterImportance');
+      if (impSelect) impSelect.value = '0';
+      renderKnowledgeTree();
+    });
+  }
+
   /* 调用 AI API（支持多平台） */
 
   /* ===== 图片压缩（Canvas，纯 JS） ===== */
@@ -3595,25 +4232,49 @@
         (imageCount > 1
           ? '用户上传了 ' + imageCount + ' 张图片，请分别识别每张图片中的文字内容，'
           : '请识别图片中的所有文字内容，') +
-        '提取知识点。输出纯 JSON 数组：[{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}]。' +
-        '如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。' +
+        '提取知识点。输出纯 JSON 数组，每个对象包含以下字段：\n' +
+        '- subject: 学科名（必填）\n' +
+        '- topic: 知识点名（必填）\n' +
+        '- summary: 一句话总结（必填）\n' +
+        '- parentTopic: 父知识点名，子概念才填，没有填 null\n' +
+        '- nodeType: 知识类型，可选值为 "concept"(概念)、"definition"(定义)、"theorem"(定理/定律)、"formula"(公式)、"example"(例题/示例)、"exercise"(习题)。如果是纯概念/名词解释填 "concept"（默认）\n' +
+        '- tags: 跨学科标签数组，如 ["操作系统","进程管理","考研核心"]，至少 1 个，最多 5 个\n' +
+        '- importance: 复习重要性 1-5，5=必考核心/高频考点，4=重要基础概念，3=一般知识点，2=了解即可，1=扩展知识。默认 3\n' +
         '如果某张图片中没有文字，跳过它。' +
         '只输出 JSON 数组，不要 markdown 标记。' +
         '【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。' +
         '【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式改为：' +
-        '[{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}], 并在数组外附加 "suggestedSubjects":["分类1","分类2","分类3"]';
+        '[{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null,"nodeType":"concept","tags":["标签1"],"importance":3}], 并在数组外附加 "suggestedSubjects":["分类1","分类2","分类3"]';
     } else if (hasImage && text) {
       var imageCount2 = Array.isArray(imageBase64) ? imageBase64.length : 1;
       systemPrompt = '你是一个知识提取器。' +
         (imageCount2 > 1
           ? '用户上传了 ' + imageCount2 + ' 张图片并附带了文字说明。请结合每张图片和文字描述提取知识点，'
           : '用户上传了一张图片并附带了文字说明。请结合图片内容和文字描述提取知识点，') +
-        '输出纯 JSON 数组：[{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}]。' +
-        'subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（如果是子概念就填，没有就填 null）。' +
+        '输出纯 JSON 数组，每个对象包含以下字段：\n' +
+        '- subject: 学科名（必填）\n' +
+        '- topic: 知识点名（必填）\n' +
+        '- summary: 一句话总结（必填）\n' +
+        '- parentTopic: 父知识点名，子概念才填，没有填 null\n' +
+        '- nodeType: 知识类型，可选值为 "concept"(概念)、"definition"(定义)、"theorem"(定理/定律)、"formula"(公式)、"example"(例题/示例)、"exercise"(习题)。如果是纯概念/名词解释填 "concept"（默认）\n' +
+        '- tags: 跨学科标签数组，如 ["操作系统","进程管理","考研核心"]，至少 1 个，最多 5 个\n' +
+        '- importance: 复习重要性 1-5，5=必考核心/高频考点，4=重要基础概念，3=一般知识点，2=了解即可，1=扩展知识。默认 3\n' +
         '只输出 JSON 数组不要 markdown 标记。' +
         '【粒度细化】【分类建议】同上';
     } else {
-      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。输出纯JSON数组格式：[{subject,topic,summary,parentTopic}]。每个对象: subject=学科名，topic=知识点名，summary=一句话总结，parentTopic=该知识点的父知识点名（子概念才填，没有就填null）。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式增加字段 suggestedSubjects: ["分类1","分类2","分类3"]';
+      systemPrompt = '你是一个知识提取器。用户输入一段学习笔记，提取所有知识点。' +
+        '输出纯 JSON 数组，每个对象包含以下字段：\n' +
+        '- subject: 学科名（必填）\n' +
+        '- topic: 知识点名（必填）\n' +
+        '- summary: 一句话总结（必填）\n' +
+        '- parentTopic: 父知识点名，子概念才填，没有填 null\n' +
+        '- nodeType: 知识类型，可选值为 "concept"(概念)、"definition"(定义)、"theorem"(定理/定律)、"formula"(公式)、"example"(例题/示例)、"exercise"(习题)。如果是纯概念/名词解释填 "concept"（默认）\n' +
+        '- tags: 跨学科标签数组，如 ["操作系统","进程管理","考研核心"]，至少 1 个，最多 5 个\n' +
+        '- importance: 复习重要性 1-5，5=必考核心/高频考点，4=重要基础概念，3=一般知识点，2=了解即可，1=扩展知识。默认 3\n' +
+        '只输出 JSON 数组不要 markdown 标记。' +
+        '【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。' +
+        '示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。' +
+        '【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式增加字段 suggestedSubjects: ["分类1","分类2","分类3"]';
     }
 
     var userContent = buildContent(text, imageBase64);
@@ -3812,7 +4473,7 @@
     var p = mergeModalOverlay._pending;
     if (p) {
       var newTopic = p.topic + ' (分支)';
-      await addKnowledge(p.text, p.subject, newTopic, p.summary, p.image || undefined, p.parentTopic || null);
+      await addKnowledge(p.text, p.subject, newTopic, p.summary, p.image || undefined, p.parentTopic || null, undefined);
       refreshMindmap();
       showToast('已创建新分支', 'success');
     }
@@ -3969,14 +4630,22 @@
           var matchedTopic = smartMatchTopic(finalSubject, item.topic);
           if (matchedTopic) {
             // 归入已有 topic
-            await addKnowledge(savedText, finalSubject, matchedTopic, item.summary, itemImage, item.parentTopic || null);
+            await addKnowledge(savedText, finalSubject, matchedTopic, item.summary, itemImage, item.parentTopic || null, {
+              nodeType: item.nodeType,
+              tags: item.tags,
+              importance: item.importance
+            });
             if (matchedTopic !== item.topic) {
               showToast('「' + item.topic + '」已自动归入「' + matchedTopic + '」', 'success');
             }
           } else if (checkTopicMerge(finalSubject, item.topic)) {
             await showMergeDialog(finalSubject, item.topic, item.summary, savedText, itemImage, item.parentTopic || null);
           } else {
-            await addKnowledge(savedText, finalSubject, item.topic, item.summary, itemImage, item.parentTopic || null);
+            await addKnowledge(savedText, finalSubject, item.topic, item.summary, itemImage, item.parentTopic || null, {
+              nodeType: item.nodeType,
+              tags: item.tags,
+              importance: item.importance
+            });
           }
         }
 
