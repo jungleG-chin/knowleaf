@@ -3122,6 +3122,36 @@
     } else {
       mmInstance = Markmap.create(mindmapSvg, { autoFit: true, colorFreezeLevel: 1, duration: 300, paddingX: 18, spacingHorizontal: 80, spacingVertical: 12, fitRatio: 0.9, initialExpandLevel: -1 }, root);
     }
+
+    // 点击思维导图节点 → 跳转到知识库对应内容
+    setTimeout(function () {
+      if (!mindmapSvg) return;
+      mindmapSvg.querySelectorAll('g.markmap-node').forEach(function (node) {
+        node.style.cursor = 'pointer';
+        node.addEventListener('click', function (e) {
+          var fo = node.querySelector('foreignObject');
+          var label = fo ? fo.textContent.trim() : '';
+          if (!label || label === '我的知识树') return;
+          var knowledgeTab = document.querySelector('[data-panel="knowledgePanel"]');
+          if (knowledgeTab) knowledgeTab.click();
+          setTimeout(function () {
+            var escaped = CSS.escape(label);
+            var target = document.querySelector('[data-subject="' + escaped + '"]');
+            if (!target) {
+              target = document.querySelector('[data-topic="' + escaped + '"]');
+            }
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              var toggle = target.querySelector('.subject-toggle, .topic-toggle');
+              if (toggle && toggle.classList.contains('collapsed')) toggle.click();
+              target.style.transition = 'background 0.3s';
+              target.style.background = '#bbf7d0';
+              setTimeout(function () { target.style.background = ''; }, 1200);
+            }
+          }, 300);
+        });
+      });
+    }, 300);
   }
 
   /* 思维导图折叠 */
