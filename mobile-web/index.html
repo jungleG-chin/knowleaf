@@ -3381,9 +3381,82 @@
     input.click();
   }
 
-  function onAllImagesLoaded() {
+  async function onAllImagesLoaded() {
+    var beforeCount = currentImages.length;
+    currentImages = await deduplicateImages(currentImages, 0.92);
     showAllPreviews();
-    showToast('已加载 ' + currentImages.length + ' 张图片', 'success');
+    if (beforeCount === currentImages.length) {
+      showToast('已加载 ' + currentImages.length + ' 张图片', 'success');
+    }
+  }
+
+  // 感知哈希：将图片缩放为 8x8 灰度图，生成 64 位哈希
+  function computePHash(base64) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        canvas.width = 8;
+        canvas.height = 8;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 8, 8);
+        var data = ctx.getImageData(0, 0, 8, 8).data;
+        var grays = [];
+        var sum = 0;
+        for (var i = 0; i < data.length; i += 4) {
+          var gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+          grays.push(gray);
+          sum += gray;
+        }
+        var avg = sum / 64;
+        var hash = '';
+        for (var j = 0; j < 64; j++) {
+          hash += grays[j] >= avg ? '1' : '0';
+        }
+        resolve(hash);
+      };
+      img.onerror = function () { resolve(null); };
+      img.src = base64;
+    });
+  }
+
+  function hammingDistance(h1, h2) {
+    if (!h1 || !h2 || h1.length !== h2.length) return 64;
+    var dist = 0;
+    for (var i = 0; i < h1.length; i++) {
+      if (h1[i] !== h2[i]) dist++;
+    }
+    return dist;
+  }
+
+  // 图片层去重：返回去重后的图片数组
+  async function deduplicateImages(images, threshold) {
+    if (!images || images.length <= 1) return images;
+    threshold = threshold || 0.9;
+    var hashes = await Promise.all(images.map(function (img) {
+      return computePHash(img.base64);
+    }));
+    var keep = [];
+    var removed = 0;
+    for (var i = 0; i < images.length; i++) {
+      var isDup = false;
+      for (var j = 0; j < keep.length; j++) {
+        var sim = 1 - hammingDistance(hashes[i], hashes[keep[j].origIdx]) / 64;
+        if (sim >= threshold) {
+          isDup = true;
+          removed++;
+          break;
+        }
+      }
+      if (!isDup) {
+        keep.push({ origIdx: i, hash: hashes[i] });
+      }
+    }
+    var result = keep.map(function (k) { return images[k.origIdx]; });
+    if (removed > 0) {
+      showToast('已自动过滤 ' + removed + ' 张重复图片', 'info');
+    }
+    return result;
   }
 
   function showAllPreviews() {
@@ -3423,6 +3496,67 @@
   btnPickImage.addEventListener('click', function () { pickImage(false); });
   btnTakePhoto.addEventListener('click', function () { pickImage(true); });
   btnRemoveImage.addEventListener('click', clearImages);
+
+  // Jaccard 文本相似度：分词后交集/并集
+  function textSimilarity(a, b) {
+    if (!a || !b) return 0;
+    var tokenize = function (s) {
+      var tokens = [];
+      var word = '';
+      for (var i = 0; i < s.length; i++) {
+        var ch = s[i];
+        if (/[一-鿿\w]/.test(ch)) {
+          word += ch;
+        } else {
+          if (word.length >= 2) tokens.push(word);
+          word = '';
+        }
+      }
+      if (word.length >= 2) tokens.push(word);
+      return tokens;
+    };
+    var ta = tokenize(a);
+    var tb = tokenize(b);
+    if (!ta.length || !tb.length) return 0;
+    var setA = {};
+    var setB = {};
+    ta.forEach(function (t) { setA[t] = true; });
+    tb.forEach(function (t) { setB[t] = true; });
+    var intersection = 0;
+    var union = 0;
+    var keys = {};
+    for (var k in setA) keys[k] = true;
+    for (var k in setB) keys[k] = true;
+    for (var k in keys) {
+      if (setA[k] && setB[k]) { intersection++; union++; }
+      else { union++; }
+    }
+    return intersection / union;
+  }
+
+  // 文本层去重：对知识点条目数组做相似度去重
+  function deduplicateEntries(entries, threshold) {
+    if (!entries || entries.length <= 1) return entries;
+    threshold = threshold || 0.85;
+    var result = [];
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      var isDup = false;
+      for (var j = 0; j < result.length; j++) {
+        var titleSim = textSimilarity(entry.summary || '', result[j].summary || '');
+        var contentSim = textSimilarity(entry.content || '', result[j].content || '');
+        if (titleSim >= threshold || contentSim >= threshold) {
+          isDup = true;
+          break;
+        }
+      }
+      if (!isDup) result.push(entry);
+    }
+    if (result.length < entries.length) {
+      showToast('已自动合并 ' + (entries.length - result.length) + ' 条重复内容', 'info');
+    }
+    return result;
+  }
 
   /* ===== 统一 API 调用（支持文本 + 图片） ===== */
   async function callDeepSeek(text, imageBase64, analyzeMode) {
@@ -3748,6 +3882,7 @@
         if (parsed.error) { showToast(parsed.error, 'error'); setLoading(false); return; }
 
         var items = Array.isArray(parsed) ? parsed : [parsed];
+        items = deduplicateEntries(items, 0.85);
         var srcImage = (savedImages && savedImages.length) ? savedImages[0].base64 : undefined;
         var savedText = text || '';
         var firstImage = srcImage;
