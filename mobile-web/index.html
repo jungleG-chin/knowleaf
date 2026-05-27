@@ -1524,7 +1524,7 @@
     <h4>📝 复习设置</h4>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
       <span style="font-size:14px;color:#475569;">每日复习题数上限</span>
-      <input type="number" id="myDailyLimit" value="20" min="1" max="100" style="width:70px;padding:8px;border:1px solid var(--green-300);border-radius:8px;font-size:14px;text-align:center;font-family:inherit;outline:none;-webkit-appearance:none;">
+      <input type="number" id="myDailyLimit" value="20" min="1" max="100" style="width:80px;padding:8px;border:2px solid var(--green-400);border-radius:8px;font-size:14px;text-align:center;font-family:inherit;outline:none;background:#fff;" autocomplete="off">
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
       <span style="font-size:14px;color:#475569;">自动归档已掌握知识点</span>
@@ -1535,7 +1535,7 @@
       </label>
     </div>
     <div class="btn-row" style="margin-top:4px;">
-      <button class="btn-outline" id="btnMySaveReview">保存复习设置</button>
+      <button type="button" class="btn-outline" id="btnMySaveReview">保存复习设置</button>
     </div>
   </div>
 
@@ -3800,11 +3800,9 @@
 
     var state = getTodayReviewState();
 
-    // ★ totalTarget = 每日复习量上限，首次固化
-    if (!state.total || state.total <= 0) {
-      state.total = limit;
-      saveTodayReviewState(state);
-    }
+    // ★ 始终使用最新的每日上限设置
+    state.total = limit;
+    saveTodayReviewState(state);
 
     reviewSession.done = state.done || 0;
     reviewSession.totalTarget = state.total;
@@ -3842,10 +3840,10 @@
       reviewEmpty.style.display = 'none';
       reviewComplete.style.display = 'flex';
       reviewProgressFill.style.width = '100%';
-      if (reviewSession.done < reviewSession.totalTarget) {
-        reviewCompleteStats.textContent = '今日复习 ' + reviewSession.done + ' / ' + reviewSession.totalTarget + '（待复习条目不足）';
+      if (reviewSession.done < getDailyLimit()) {
+        reviewCompleteStats.textContent = '今日复习 ' + reviewSession.done + ' / ' + getDailyLimit() + '（待复习条目不足）';
       } else {
-        reviewCompleteStats.textContent = '今日复习 ' + reviewSession.totalTarget + ' 条，完成 ' + reviewSession.done + ' / ' + reviewSession.totalTarget;
+        reviewCompleteStats.textContent = '今日复习 ' + getDailyLimit() + ' 条，完成 ' + reviewSession.done + ' / ' + getDailyLimit();
       }
       saveDailyStreak(reviewSession.streak + 1);
       reviewSession.streak = reviewSession.streak + 1;
@@ -3853,7 +3851,7 @@
     }
     reviewEmpty.style.display = 'none';
     reviewComplete.style.display = 'none';
-    reviewProgressFill.style.width = ((reviewSession.done / Math.max(1, reviewSession.totalTarget)) * 100) + '%';
+    reviewProgressFill.style.width = ((reviewSession.done / Math.max(1, getDailyLimit())) * 100) + '%';
 
     var html = '';
     for (var i = 0; i < reviewSession.queue.length; i++) {
@@ -3933,7 +3931,7 @@
     closeWikiAnswer();
     renderReviewList();
 
-    if (reviewSession.done >= reviewSession.totalTarget) {
+    if (reviewSession.done >= getDailyLimit()) {
       showReviewComplete();
     }
   }
@@ -3942,7 +3940,7 @@
     reviewWikiList.innerHTML = '';
     reviewProgressFill.style.width = '100%';
     reviewComplete.style.display = 'flex';
-    reviewCompleteStats.textContent = '今日复习 ' + reviewSession.totalTarget + ' 条，完成 ' + reviewSession.done + ' / ' + reviewSession.totalTarget;
+    reviewCompleteStats.textContent = '今日复习 ' + getDailyLimit() + ' 条，完成 ' + reviewSession.done + ' / ' + getDailyLimit();
     saveDailyStreak(reviewSession.streak + 1);
     reviewSession.streak = reviewSession.streak + 1;
     updateReviewStats();
@@ -3951,7 +3949,7 @@
   function updateReviewStats() {
     var data = loadData();
     var stats = getReviewStats(data);
-    var T = reviewSession.totalTarget || getDailyLimit();
+    var T = getDailyLimit(); // 始终从配置读取，不用缓存值
     var dueNum = Math.max(0, T - reviewSession.done);
     reviewDueCount.textContent = dueNum + ' / ' + T;
     reviewDoneToday.textContent = reviewSession.done + ' / ' + T;
@@ -3966,9 +3964,7 @@
   // 进入复习板块时自动加载
   var reviewTab = document.querySelector('[data-panel="reviewPanel"]');
   reviewTab.addEventListener('click', function () {
-    if (reviewSession.totalTarget === undefined || reviewSession.totalTarget === 0) {
-      loadReviewSession();
-    }
+    loadReviewSession(); // 每次进入复习板块都重新加载，确保使用最新设置
     renderReviewList();
   });
 
@@ -4024,7 +4020,8 @@
     var savedModel = getModel();
     myModelEl = renderModelSelect(platform, myModelEl, savedModel);
     var cfg = getReviewConfig();
-    myDailyLimitEl.value = cfg.dailyLimit || 20;
+    var daily = cfg.dailyLimit;
+    myDailyLimitEl.value = (daily && daily >= 1) ? daily : 20;
     myAutoArchiveEl.checked = cfg.autoArchive !== false;
     updateAutoArchiveSlider();
     updateMyStats();
@@ -4106,11 +4103,38 @@
   });
 
   document.getElementById('btnMySaveReview').addEventListener('click', function () {
+    var raw = myDailyLimitEl.value;
+    var num = parseInt(raw, 10);
+    if (!raw || isNaN(num) || num < 1) { myDailyLimitEl.value = 20; num = 20; }
+    if (num > 100) { myDailyLimitEl.value = 100; num = 100; }
     var cfg = getReviewConfig();
-    cfg.dailyLimit = parseInt(myDailyLimitEl.value, 10) || 20;
+    cfg.dailyLimit = num;
     cfg.autoArchive = myAutoArchiveEl.checked;
     saveReviewConfig(cfg);
-    showToast('复习设置已保存', 'success');
+    myDailyLimitEl.style.transition = 'background .3s';
+    myDailyLimitEl.style.background = '#dcfce7';
+    setTimeout(function () { myDailyLimitEl.style.background = '#fff'; }, 800);
+    showToast('复习设置已保存（每日' + num + '题）', 'success');
+  });
+
+  // 失焦时自动保存（增强持久化安全）
+  myDailyLimitEl.addEventListener('blur', function () {
+    var raw = myDailyLimitEl.value;
+    var num = parseInt(raw, 10);
+    if (!raw || isNaN(num) || num < 1) {
+      myDailyLimitEl.value = getReviewConfig().dailyLimit || 20;
+      return;
+    }
+    if (num > 100) {
+      myDailyLimitEl.value = 100;
+      num = 100;
+    }
+    var cfg = getReviewConfig();
+    cfg.dailyLimit = num;
+    cfg.autoArchive = myAutoArchiveEl.checked;
+    try {
+      saveReviewConfig(cfg);
+    } catch (e) {}
   });
 
   document.getElementById('btnMyExport').addEventListener('click', function () {
