@@ -1295,8 +1295,8 @@
 例如：TCP 三次握手的过程、React Hooks 原理..."
     ></textarea>
     <div class="image-preview-area" id="imagePreviewArea" style="display:none;">
-      <img id="imagePreview" src="" alt="预览">
-      <button class="btn-remove-image" id="btnRemoveImage">✕</button>
+      <div id="imagePreviewContainer" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+      <button class="btn-remove-image" id="btnRemoveImage">清除全部</button>
     </div>
     <div class="image-upload-btns">
       <button class="btn-outline" id="btnPickImage">📷 选择图片</button>
@@ -2026,9 +2026,9 @@
   const settingsPlatform    = document.getElementById('settingsPlatform');
   const settingsApiUrl      = document.getElementById('settingsApiUrl');
   const settingsModel       = document.getElementById('settingsModel');
-  const imagePreviewArea    = document.getElementById('imagePreviewArea');
-  const imagePreview        = document.getElementById('imagePreview');
-  const btnRemoveImage      = document.getElementById('btnRemoveImage');
+  const imagePreviewArea        = document.getElementById('imagePreviewArea');
+  const imagePreviewContainer   = document.getElementById('imagePreviewContainer');
+  const btnRemoveImage          = document.getElementById('btnRemoveImage');
   const btnPickImage        = document.getElementById('btnPickImage');
   const btnTakePhoto        = document.getElementById('btnTakePhoto');
   const editModalOverlay    = document.getElementById('editModalOverlay');
@@ -3324,10 +3324,14 @@
   /* 压缩图片用于 localStorage 存储（600x400, JPEG 40%，约 20-30KB） */
 
   /* ===== 构建 multimodal 消息内容 ===== */
-  function buildContent(text, imageBase64) {
+  function buildContent(text, images) {
     var parts = [];
-    if (imageBase64) {
-      parts.push({ type: 'image_url', image_url: { url: imageBase64 } });
+    if (images) {
+      var imageList = Array.isArray(images) ? images : [images];
+      imageList.forEach(function (img) {
+        var url = typeof img === 'string' ? img : img.base64;
+        parts.push({ type: 'image_url', image_url: { url: url } });
+      });
     }
     if (text) {
       parts.push({ type: 'text', text: text });
@@ -3336,52 +3340,89 @@
   }
 
   /* ===== 图片上传 ===== */
-  var currentImageBase64 = null;
+  var currentImages = [];  // [{ base64: 'data:...', name: 'xxx.jpg' }]
 
   function pickImage(capture) {
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    input.multiple = true;
     if (capture) input.setAttribute('capture', 'environment');
     input.onchange = function () {
-      var file = this.files && this.files[0];
-      if (!file) return;
-      if (!file.type.match(/image\/(jpeg|png|webp|gif)/)) { showToast('请选择图片文件', 'error'); return; }
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var base64 = e.target.result;
-        // 超过 512KB 则压缩
-        if (base64.length > 512 * 1024) {
-          compressImage(base64, 512, function (compressed) {
-            currentImageBase64 = compressed;
-            showPreview(compressed);
-            showToast('图片已压缩并就绪', 'success');
-          });
-        } else {
-          currentImageBase64 = base64;
-          showPreview(base64);
-          showToast('图片已就绪', 'success');
-        }
-      };
-      reader.readAsDataURL(file);
+      var files = Array.from(this.files || []);
+      if (!files.length) return;
+      var validFiles = files.filter(function (f) {
+        return f.type.match(/image\/(jpeg|png|webp|gif)/);
+      });
+      if (!validFiles.length) { showToast('请选择图片文件', 'error'); return; }
+      if (validFiles.length < files.length) {
+        showToast('已过滤 ' + (files.length - validFiles.length) + ' 个非图片文件', 'warning');
+      }
+      var processed = 0;
+      validFiles.forEach(function (file) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var base64 = e.target.result;
+          if (base64.length > 512 * 1024) {
+            compressImage(base64, 512, function (compressed) {
+              currentImages.push({ base64: compressed, name: file.name });
+              processed++;
+              if (processed === validFiles.length) onAllImagesLoaded();
+            });
+          } else {
+            currentImages.push({ base64: base64, name: file.name });
+            processed++;
+            if (processed === validFiles.length) onAllImagesLoaded();
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     };
     input.click();
   }
 
-  function showPreview(base64) {
-    imagePreview.src = base64;
-    imagePreviewArea.style.display = 'block';
+  function onAllImagesLoaded() {
+    showAllPreviews();
+    showToast('已加载 ' + currentImages.length + ' 张图片', 'success');
   }
 
-  function clearImage() {
-    currentImageBase64 = null;
-    imagePreview.src = '';
+  function showAllPreviews() {
+    imagePreviewArea.style.display = 'block';
+    imagePreviewContainer.innerHTML = '';
+    currentImages.forEach(function (img, i) {
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:relative;display:inline-block;margin:4px;';
+      var el = document.createElement('img');
+      el.src = img.base64;
+      el.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #ddd;';
+      var del = document.createElement('span');
+      del.textContent = '✕';
+      del.style.cssText = 'position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+      del.onclick = function () { removeImage(i); };
+      wrapper.appendChild(el);
+      wrapper.appendChild(del);
+      imagePreviewContainer.appendChild(wrapper);
+    });
+  }
+
+  function removeImage(index) {
+    currentImages.splice(index, 1);
+    if (currentImages.length === 0) {
+      clearImages();
+    } else {
+      showAllPreviews();
+    }
+  }
+
+  function clearImages() {
+    currentImages = [];
+    imagePreviewContainer.innerHTML = '';
     imagePreviewArea.style.display = 'none';
   }
 
   btnPickImage.addEventListener('click', function () { pickImage(false); });
   btnTakePhoto.addEventListener('click', function () { pickImage(true); });
-  btnRemoveImage.addEventListener('click', clearImage);
+  btnRemoveImage.addEventListener('click', clearImages);
 
   /* ===== 统一 API 调用（支持文本 + 图片） ===== */
   async function callDeepSeek(text, imageBase64, analyzeMode) {
@@ -3412,7 +3453,7 @@
       return data3.choices[0].message.content;
     }
 
-    var hasImage = !!imageBase64;
+    var hasImage = Array.isArray(imageBase64) ? imageBase64.length > 0 : !!imageBase64;
     var systemPrompt;
     if (hasImage && !text) {
       systemPrompt = '你是一个 OCR 知识提取器。请识别图片中的所有文字内容，提取知识点。输出纯 JSON：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null}。如果该知识点是图中某个更宏大知识点的子概念，parentTopic 填父知识点名称，否则为 null。如果图片中没有文字，返回 {"error":"图片中未识别到文字"}。只输出JSON不要markdown标记。【粒度细化】如果输入内容包含多条并列规则、步骤、要点、分类或例外情况，必须将每条规则/步骤/例外拆分为独立的 topic（通过 parentTopic 关联到父知识点），不要将多个规则合并到同一个 topic 中。示例："英语序数词6条规则"应拆为6个子topic；"OS进程调度算法"应拆为FCFS/SJF/优先级等各一个topic。【分类建议】同时分析内容属于什么学科/领域，给出3个最可能的分类建议。最终输出格式改为：{"subject":"学科","topic":"知识点","summary":"一句话总结","parentTopic":null,"suggestedSubjects":["分类1","分类2","分类3"]}';
@@ -3683,7 +3724,7 @@
   /* ===== 分析按钮 ===== */
   btnAnalyze.addEventListener('click', async function () {
     var text = userInput.value.trim();
-    var hasImage = !!currentImageBase64;
+    var hasImage = currentImages.length > 0;
 
     if (!text && !hasImage) { showToast('请先输入学习内容或上传图片', 'error'); return; }
 
@@ -3698,16 +3739,16 @@
 
     setLoading(true);
     try {
-      var savedImage = currentImageBase64;
-      var result = await callDeepSeek(text || null, savedImage);
-      clearImage();
+      var savedImages = currentImages.length ? currentImages.slice() : null;
+      var result = await callDeepSeek(text || null, savedImages);
+      clearImages();
 
       try {
         var parsed = JSON.parse(result);
         if (parsed.error) { showToast(parsed.error, 'error'); setLoading(false); return; }
 
         var items = Array.isArray(parsed) ? parsed : [parsed];
-        var srcImage = savedImage || undefined;
+        var srcImage = (savedImages && savedImages.length) ? savedImages[0].base64 : undefined;
         var savedText = text || '';
         var firstImage = srcImage;
 
